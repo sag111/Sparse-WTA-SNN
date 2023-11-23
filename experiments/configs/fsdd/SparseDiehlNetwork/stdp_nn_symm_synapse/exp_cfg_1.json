@@ -1,0 +1,1 @@
+{"DiehlNetwork": {"p": [0.4, null, 0.4], "r": [null, null, 0.9], "spatial": "free", "time": 350, "n_neurons": [400, 400], "tau_m": [130, 30], "high_rate": 800.0, "t_ref": [5.0, 3.0], "w_syn": [20.0, -13.0], "synapse_model": "stdp_nn_symm_synapse"}, "LogisticRegression": {"max_iter": 100000, "solver": "saga", "C": 100}, "GRF": {"n_fields": 10}, "Normalizer": {"norm": "L2"}}

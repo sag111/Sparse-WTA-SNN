@@ -1,0 +1,2 @@
+include fsnn_classifiers/datasets/_fsdd_csv/full_train.csv
+include fsnn_classifiers/datasets/_fsdd_csv/full_test.csv

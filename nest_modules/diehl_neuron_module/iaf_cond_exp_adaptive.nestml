@@ -1,0 +1,75 @@
+"""
+Name: iaf_cond_exp_adaptive - Simple conductance based leaky integrate-and-fire neuron
+                    model.
+
+Description:
+iaf_cond_exp_adaptive is an adaptive-threshold implementation of a spiking neuron using IAF dynamics with
+conductance-based synapses. Incoming spike events induce a post-synaptic change
+of conductance modelled by an exponential function. The exponential function
+is normalised such that an event of weight 1.0 results in a peak conductance of
+1 nS.
+
+Sends: SpikeEvent
+
+Receives: SpikeEvent, CurrentEvent, DataLoggingRequest
+
+References:
+
+SeeAlso: iaf_psc_delta, iaf_psc_exp, iaf_cond_exp
+"""
+
+neuron iaf_cond_exp_adaptive:
+
+    state:
+        r integer = 0           # counts number of tick during the refractory period
+        V_m mV = E_L            # membrane potential
+        V_th mV = -55 mV - E_L  # dynamic threshold
+
+    equations:
+        kernel g_in = exp(-t/tau_synI) # inputs from the inh conductance
+        kernel g_ex = exp(-t/tau_synE) # inputs from the exc conductance
+
+        inline I_syn_exc pA = convolve(g_ex, exc_spikes) * nS * ( E_ex - V_m )
+        inline I_syn_inh pA = convolve(g_in, inh_spikes) * nS * ( E_in - V_m )
+        V_m' = (E_L - V_m)/tau_m + (I_syn_exc + I_syn_inh + I_e + I_stim) / C_m
+        V_th' = -1 * (V_th - Theta_rest) / tc_theta
+
+    parameters:
+        V_reset mV = -60.0 mV # Reset Potential
+        t_ref ms = 2.0 ms     # Refractory period
+        tau_m ms = 10.0 ms    # leakage-caused membrane relaxation time constant
+        C_m pF = 250.0 pF     # Membrane Capacitance
+        E_ex mV = 0 mV        # Excitatory reversal Potential
+        E_in mV = -85.0 mV    # Inhibitory reversal Potential
+        E_L mV = -70.0 mV     # Leak reversal Potential (aka resting potential)
+        tau_synE ms = 0.2 ms  # Synaptic Time Constant Excitatory Synapse
+        tau_synI ms = 2.0 ms  # Synaptic Time Constant for Inhibitory Synapse
+
+        # constant external input current
+        I_e pA = 0 pA
+        tc_theta ms = 1e7ms        # threshold relaxation time constant
+        Theta_plus mV = 0.05mV     # Theta += Theta_plus on each spike
+        Theta_rest mV = -72mV      # Resting value of the dynamic threshold
+
+    internals:
+        # refractory time in steps
+        RefractoryCounts integer = steps(t_ref)
+
+    input:
+        inh_spikes <- inhibitory spike
+        exc_spikes <- excitatory spike
+        I_stim pA <- continuous
+
+    output:
+        spike
+
+    update:
+        integrate_odes()
+        if r != 0: # neuron is absolute refractory
+            r =  r - 1
+            V_m = V_reset # clamp potential
+        elif V_m >= V_th:  # neuron is not absolute refractory
+            r = RefractoryCounts
+            V_m = V_reset # clamp potential
+            V_th += Theta_plus
+            emit_spike()
