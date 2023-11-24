@@ -1,4 +1,4 @@
-# Sparse_SNN WTA 
+# Sparse Spiking Neural Networks using NEST and Scikit-Learn
 
 1. create evironment
 ```
