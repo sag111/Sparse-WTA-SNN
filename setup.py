@@ -6,8 +6,7 @@ import fsnn_classifiers
 
 setup(
     name='fsnn_classifiers',
-    version=0.1,
+    version=0.0,
     packages=find_packages(),
-    include_package_data=True,
-    long_description=open(join(dirname(__file__), 'README.md')).read(),
+    #long_description=open(join(dirname(__file__), 'README.txt')).read(),
 )

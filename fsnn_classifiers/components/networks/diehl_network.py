@@ -1,15 +1,16 @@
-from copy import deepcopy
-
-from sklearn.preprocessing import minmax_scale
-
-from tqdm import tqdm
-import numpy as np
-import os
 
 import os
 os.environ["PYNEST_QUIET"] = "1"
 
+from sklearn.preprocessing import MinMaxScaler
+
+from tqdm import tqdm
+import numpy as np
+
+
 import nest
+
+from collections import namedtuple
 
 from fsnn_classifiers.components.networks.base_spiking_transformer import BaseSpikingTransformer
 from fsnn_classifiers.components.networks.utils import (
@@ -18,8 +19,6 @@ from fsnn_classifiers.components.networks.utils import (
     convert_random_parameters_to_nest
 )
 from fsnn_classifiers.components.networks.common_model_components import disable_plasticity
-
-from fsnn_classifiers.components.networks.configs.diehl_network import snn_parameters, network_objects_tuple
 
 
 class DiehlNetwork(BaseSpikingTransformer):
@@ -40,10 +39,13 @@ class DiehlNetwork(BaseSpikingTransformer):
         low_rate=0.018,
         epochs=1,
         time=350,
+        intervector_pause=50.0,
         random_state=None,
         n_jobs=1,
         warm_start=False,
         quiet=True,
+        weight_normalization=None,
+        minmax_scale=False,
         **kwargs,
     ):
         self.random_state = random_state
@@ -64,6 +66,9 @@ class DiehlNetwork(BaseSpikingTransformer):
         self.time = time
         self.epochs = epochs
         self.synapse_model = synapse_model
+        self.intervector_pause = intervector_pause
+        self.weight_normalization = weight_normalization
+        self.minmax_scale = minmax_scale
 
         # sparcity
         self.p = p
@@ -71,84 +76,117 @@ class DiehlNetwork(BaseSpikingTransformer):
         self.spatial = spatial
 
         self._check_modules(quiet)
-        _parameters = self._get_initial_parameters()
+        
+    def _get_network_objects_tuple(self, ):
 
-        ## set base arguments
-        # neuron parameters
-        for key, val in zip(["V_th", "t_ref", "tau_m"], [V_th, t_ref, tau_m]):
-            if not hasattr(val, "__len__"):
-                p = (val, val)
-            else:
-                p = val
-            _parameters["neuron_parameters"]["exc_neurons"][key] = p[0]
-            _parameters["neuron_parameters"]["inh_neurons"][key] = p[1]
-        # synapse parameters
-        if not hasattr(w_syn, "__len__"):
-            p = (w_syn, w_syn)
-        else:
-            p = w_syn
-        _parameters["synapse_parameters"]["exc_to_inh"]["weight"] = p[0]
-        _parameters["synapse_parameters"]["inh_to_exc"]["weight"] = p[1]
-        _parameters["synapse_parameters"]["input_to_exc"][
-            "synapse_model"
-        ] = synapse_model
-        if synapse_model != "stdp_nn_symm_synapse":
-            # remove extra parameters for memristive synapse models
-            _parameters["synapse_parameters"]["input_to_exc"].pop("Wmax", None)
-            _parameters["synapse_parameters"]["input_to_exc"].pop("alpha", None)
-            _parameters["synapse_parameters"]["input_to_exc"].pop("lambda", None)
-            _parameters["synapse_parameters"]["input_to_exc"].pop("mu_plus", None)
-            _parameters["synapse_parameters"]["input_to_exc"].pop("mu_minus", None)
-            _parameters["synapse_parameters"]["input_to_exc"].pop("tau_plus", None)
-        else:
-            _parameters["synapse_parameters"]["input_to_exc"]["alpha"] = alpha
-            _parameters["synapse_parameters"]["input_to_exc"]["lambda"] = nu
-        # set network parameters
-        _parameters["network_parameters"]["high_rate"] = high_rate
-        _parameters["network_parameters"]["low_rate"] = low_rate
-        _parameters["network_parameters"]["epochs"] = int(epochs)
-        _parameters["network_parameters"]["number_of_exc_neurons"] = int(n_neurons[0])
-        _parameters["network_parameters"]["number_of_inh_neurons"] = int(n_neurons[1])
-        _parameters["network_parameters"]["one_vector_longtitude"] = int(time)
+        return namedtuple(
+                        'network_objects_tuple',
+                        (
+                            'exc_neuron_ids',
+                            'inh_neuron_ids',
+                            'generators_ids',
+                            'inputs_ids',
+                            'all_connection_descriptors',
+                            'exc_neurons_spike_recorder_id',
+                            'inh_neurons_spike_recorder_id',
+                        )
+                    )
+    
+    def _get_parameters(self, testing_mode=False):
 
-        ## set optional keyword arguments
-        # must be in format parameter_type+key1+key2+...
-        parameter_types = ["network", "neuron", "synapse"]
-        for par_str, val in kwargs.items():
-            location = par_str.split("+")
-            assert location[0] in parameter_types, "{par_str} -- wrong format!"
-            assert len(location) in [
-                2,
-                3,
-            ], f"Wrong number of parameter keys: {len(location)}!"
-            if len(location) == 2:
-                _parameters[f"{location[0]}_parameters"][location[1]] = val
-            else:
-                _parameters[f"{location[0]}_parameters"][location[1]][location[2]] = val
+        self.inp_to_inh_prob = 0.1
 
-        # initialize parameters
-        self.network_parameters = _parameters["network_parameters"]
-        self.neuron_parameters = _parameters["neuron_parameters"]
-        self.synapse_parameters = _parameters["synapse_parameters"]
-
-    def _create_network(self, testing_mode):
-        number_of_inputs = self.n_features_in_
-        n_threads = self.n_jobs
-        random_state = (
-            self.random_state
-            if not self.random_state is None
-            else generate_random_state()
-        )
-        create_spike_recorders = testing_mode
-
-        # Make a copy because we will tamper with neuron_parameters
-        # if creating neurons with pre-recorded thresholds.
-        # Also, run nest.CreateParameter on those parameters
-        # that are dictionaries describing random distributions.
-        neuron_parameters, synapse_parameters = map(
-            convert_random_parameters_to_nest,
-            (self.neuron_parameters, self.synapse_parameters),
-        )
+        neuron_parameters = {
+                    'exc_neurons': {
+                        'C_m': 100.0,
+                        'E_L': -65.0,
+                        'E_ex': 0.0,
+                        'E_in': -100.0,
+                        'I_e': 0.0,
+                        'Theta_plus': 0.05,
+                        'Theta_rest': -72.0,
+                        'V_m': -105.0,
+                        'V_reset': -65.0,
+                        'V_th': self.V_th[0],
+                        't_ref': self.t_ref[0],
+                        'tau_m': self.tau_m[0],
+                        'tau_synE': 1.0,
+                        'tau_synI': 2.0,
+                        'tc_theta': 10000000.0
+                    },
+                    'inh_neurons': {
+                        'C_m': 10.0,
+                        'E_L': -60.0,
+                        'E_ex': 0.0,
+                        'E_in': -100.0,
+                        'I_e': 0.0,
+                        'Theta_plus': 0.0,
+                        'Theta_rest': -40.0,
+                        'V_m': -100.0,
+                        'V_reset': -45.0,
+                        'V_th': self.V_th[1],
+                        't_ref': self.t_ref[1],
+                        'tau_m': self.tau_m[1],
+                        'tau_synE': 1.0,
+                        'tau_synI': 2.0,
+                        'tc_theta': 1e+20
+                    }
+                }
+        
+        synapse_parameters = {
+                        'exc_to_inh': {
+                            'synapse_model': 'static_synapse',
+                            'weight': self.w_syn[0]
+                        },
+                        'inh_to_exc': {
+                            'synapse_model': 'static_synapse',
+                            'weight': self.w_syn[1]
+                        },
+                        'input_to_exc': {  
+                            'delay': {
+                                'parametertype': 'uniform',
+                                'specs': {
+                                    'min': 0.1,
+                                    'max': 10.0,
+                                },
+                            },
+                            'synapse_model': self.synapse_model,
+                            'weight': {
+                                'parametertype': 'uniform',
+                                'specs': {
+                                    'min': 0.0,
+                                    'max': 1.0,
+                                },
+                            },
+                        },
+                        'input_to_inh': {
+                            'delay': {
+                                'parametertype': 'uniform',
+                                'specs': {
+                                    'min': 0.1,
+                                    'max': 5.0,
+                                },
+                            },
+                            'synapse_model': 'static_synapse',
+                            'weight': {
+                                'parametertype': 'uniform',
+                                'specs': {
+                                    'min': 0.0,
+                                    'max': 0.2,
+                                },
+                            },
+                        },
+                    }
+        
+        # add extra parameters for default NEST plasticity
+        if self.synapse_model not in ['stdp_tanh_synapse',
+                             'stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse']:
+            synapse_parameters["input_to_exc"]["Wmax"] = 1.0
+            synapse_parameters["input_to_exc"]["mu_plus"] = 0.0
+            synapse_parameters["input_to_exc"]["mu_minus"] = 0.0
+            synapse_parameters["input_to_exc"]["tau_plus"] = 20.0
+            synapse_parameters["input_to_exc"]["lambda"] = 0.01
+            synapse_parameters["input_to_exc"]['alpha'] = 0.5534918994526379
 
         if testing_mode:
             # Disable dynamic threshold.
@@ -164,92 +202,136 @@ class DiehlNetwork(BaseSpikingTransformer):
                 # setting varying neuron parameters
                 # by passing a dictionary per each neuron.
                 dict(neuron_parameters["exc_neurons"], V_th=V_th)
-                for V_th in exc_neurons_thresholds
+                for V_th in self.exc_neurons_thresholds_
             ]
 
-        # Remove existing NEST objects if any exist.
-        nest.ResetKernel()
-        nest.SetKernelStatus(
-            {
-                "resolution": 0.1,
-                "local_num_threads": n_threads,
-            }
+        neuron_parameters, synapse_parameters = map(
+            convert_random_parameters_to_nest,
+            (neuron_parameters, synapse_parameters),
         )
-        nest.rng_seed = random_state
+
+        return neuron_parameters, synapse_parameters
+    
+    def _create_spatial_grid_neurons(self, neuron_parameters):
+        pos = nest.spatial.grid(
+            shape=[10, 10],  # the number of rows and column in this grid ...
+            extent=[1.0, 1.0],
+        )  # the size of the grid in mm
+
+        # Create nodes.
+        exc_neuron_ids = nest.Create(
+            "iaf_cond_exp_adaptive",
+            params=neuron_parameters["exc_neurons"],
+            positions=pos,
+        )
+        inh_neuron_ids = nest.Create(
+            "iaf_cond_exp_adaptive",
+            params=neuron_parameters["inh_neurons"],
+            positions=pos,
+        )
+
+        return (exc_neuron_ids, inh_neuron_ids)
+    
+    def _create_spatial_free_neurons(self, neuron_parameters):
+        pos = nest.spatial.free(
+            nest.random.uniform(
+                min=-0.5, max=0.5
+            ),  # using random positions in a uniform distribution
+            num_dimensions=2,
+        )  # have to specify number of dimensions
+
+        # Create nodes.
+        exc_neuron_ids = nest.Create(
+            "iaf_cond_exp_adaptive",  # ADAPTIVE IN ORIGINAL DIEHL
+            self.n_neurons[0],
+            params=neuron_parameters["exc_neurons"],
+            positions=pos,
+        )
+        inh_neuron_ids = nest.Create(
+            "iaf_cond_exp_adaptive",
+            self.n_neurons[1],
+            params=neuron_parameters["inh_neurons"],
+            positions=pos,
+        )
+
+        return (exc_neuron_ids, inh_neuron_ids)
+    
+    def _create_non_spatial_neurons(self, neuron_parameters):
+
+        # Create nodes.
+        exc_neuron_ids = nest.Create(
+            "iaf_cond_exp_adaptive",  # ADAPTIVE IN ORIGINAL DIEHL
+            self.n_neurons[0],
+            params=neuron_parameters["exc_neurons"],
+        )
+        inh_neuron_ids = nest.Create(
+            "iaf_cond_exp_adaptive",
+            self.n_neurons[1],
+            params=neuron_parameters["inh_neurons"],
+        )
+
+        return (exc_neuron_ids, inh_neuron_ids)
+
+    
+    def _create_neuron_populations(self, neuron_parameters, number_of_inputs, create_spike_recorders=False):
 
         inputs_ids = nest.Create("parrot_neuron", number_of_inputs)
         generators_ids = nest.Create("poisson_generator", number_of_inputs)
 
         if any([x is not None for x in self.p]):
             if self.spatial == "grid":
-                pos = nest.spatial.grid(
-                    shape=[10, 10],  # the number of rows and column in this grid ...
-                    extent=[1.0, 1.0],
-                )  # the size of the grid in mm
-
-                # Create nodes.
-                exc_neuron_ids = nest.Create(
-                    "iaf_cond_exp_adaptive",
-                    params=neuron_parameters["exc_neurons"],
-                    positions=pos,
-                )
-                inh_neuron_ids = nest.Create(
-                    "iaf_cond_exp_adaptive",
-                    params=neuron_parameters["inh_neurons"],
-                    positions=pos,
-                )
-
-                inputs_ids = nest.Create("parrot_neuron", number_of_inputs)
-
-                generators_ids = nest.Create("poisson_generator", number_of_inputs)
+                exc_neuron_ids, inh_neuron_ids = self._create_spatial_grid_neurons(neuron_parameters)
             elif self.spatial == "free":
-                pos = nest.spatial.free(
-                    nest.random.uniform(
-                        min=-0.5, max=0.5
-                    ),  # using random positions in a uniform distribution
-                    num_dimensions=2,
-                )  # have to specify number of dimensions
-
-                # Create nodes.
-                exc_neuron_ids = nest.Create(
-                    "iaf_cond_exp_adaptive",  # ADAPTIVE IN ORIGINAL DIEHL
-                    self.network_parameters["number_of_exc_neurons"],
-                    params=neuron_parameters["exc_neurons"],
-                    positions=pos,
-                )
-                inh_neuron_ids = nest.Create(
-                    "iaf_cond_exp_adaptive",
-                    self.network_parameters["number_of_inh_neurons"],
-                    params=neuron_parameters["inh_neurons"],
-                    positions=pos,
-                )
+                exc_neuron_ids, inh_neuron_ids = self._create_spatial_free_neurons(neuron_parameters)
             else:
-                raise NotImplementedError(
-                    f"Spatial connections of the type {self.spatial} are not implemented."
-                )
+                raise NotImplementedError(f"Unknown spatial arrangement: {self.spatial}")
         else:
-            # Create nodes.
-            exc_neuron_ids = nest.Create(
-                "iaf_cond_exp_adaptive",  # ADAPTIVE IN ORIGINAL DIEHL
-                self.network_parameters["number_of_exc_neurons"],
-                params=neuron_parameters["exc_neurons"],
-            )
-            inh_neuron_ids = nest.Create(
-                "iaf_cond_exp_adaptive",
-                self.network_parameters["number_of_inh_neurons"],
-                params=neuron_parameters["inh_neurons"],
-            )
+            exc_neuron_ids, inh_neuron_ids = self._create_non_spatial_neurons(neuron_parameters)
 
         if create_spike_recorders:
             exc_neurons_spike_recorder_id = nest.Create("spike_recorder")
             inh_neurons_spike_recorder_id = nest.Create("spike_recorder")
+        else:
+            exc_neurons_spike_recorder_id = None
+            inh_neurons_spike_recorder_id = None
 
-        populations_to_connect = [
-            ("input_to_exc", inputs_ids, exc_neuron_ids),
-            ("input_to_inh", inputs_ids, inh_neuron_ids),
-            ("exc_to_inh", exc_neuron_ids, inh_neuron_ids),
-            ("inh_to_exc", inh_neuron_ids, exc_neuron_ids),
-        ]
+
+        return (
+            generators_ids,
+            inputs_ids,
+            exc_neuron_ids,
+            inh_neuron_ids,
+            exc_neurons_spike_recorder_id,
+            inh_neurons_spike_recorder_id,
+        )
+    
+    def _get_connection_spec(self, def_conn, p, r):
+        if p == None:
+            return def_conn
+        else:
+            if r == None:
+                conn = {
+                    "rule": "pairwise_bernoulli",
+                    "p": p,
+                }
+            else:
+                conn = {
+                    "rule": "pairwise_bernoulli",
+                    "p": p,
+                    "mask": {"circular": {"radius": r}},
+                }
+
+            return conn
+    
+    def _connect_neuron_populations(self, 
+                                    synapse_parameters,
+                                    generators_ids,
+                                    inputs_ids, 
+                                    exc_neuron_ids,
+                                    inh_neuron_ids,
+                                    exc_neurons_spike_recorder_id,
+                                    inh_neurons_spike_recorder_id,
+                                    ):
 
         # Create connections.
         # ------------------
@@ -299,7 +381,7 @@ class DiehlNetwork(BaseSpikingTransformer):
                 conn_spec={
                     "rule": "fixed_total_number",
                     "N": int(
-                        self.network_parameters["input_to_inh_connection_prob"]
+                        self.inp_to_inh_prob
                         * len(inputs_ids)
                         * len(inh_neuron_ids)
                     ),
@@ -325,7 +407,7 @@ class DiehlNetwork(BaseSpikingTransformer):
             )
         else:
             for current_neuron_number in range(
-                self.network_parameters["number_of_inh_neurons"]
+                self.n_neurons[1]
             ):
                 nest.Connect(
                     pre=inh_neuron_ids[
@@ -346,13 +428,64 @@ class DiehlNetwork(BaseSpikingTransformer):
                 )
 
         # Connect neurons to spike detectors.
-        if create_spike_recorders:
+        if exc_neurons_spike_recorder_id is not None and inh_neurons_spike_recorder_id is not None:
             nest.Connect(
                 exc_neuron_ids, exc_neurons_spike_recorder_id, conn_spec="all_to_all"
             )
             nest.Connect(
                 inh_neuron_ids, inh_neurons_spike_recorder_id, conn_spec="all_to_all"
             )
+
+        return None  
+
+    def _create_network(self, testing_mode):
+        number_of_inputs = self.n_features_in_
+        n_threads = self.n_jobs
+        random_state = (
+            self.random_state
+            if not self.random_state is None
+            else generate_random_state()
+        )
+
+        # Remove existing NEST objects if any exist.
+        nest.ResetKernel()
+        nest.SetKernelStatus(
+            {
+                "resolution": 0.1,
+                "local_num_threads": n_threads,
+            }
+        )
+        nest.rng_seed = random_state
+
+        neuron_parameters, synapse_parameters = self._get_parameters(testing_mode)
+
+        # create neuron populations
+
+        (
+            generators_ids,
+            inputs_ids,
+            exc_neuron_ids,
+            inh_neuron_ids,
+            exc_neurons_spike_recorder_id,
+            inh_neurons_spike_recorder_id,
+        ) = self._create_neuron_populations(neuron_parameters, number_of_inputs, testing_mode)
+
+        # connect neurons
+
+        self._connect_neuron_populations(synapse_parameters,
+                                         generators_ids,
+                                         inputs_ids,
+                                         exc_neuron_ids,
+                                         inh_neuron_ids,
+                                         exc_neurons_spike_recorder_id,
+                                         inh_neurons_spike_recorder_id)
+
+        populations_to_connect = [
+            ("input_to_exc", inputs_ids, exc_neuron_ids),
+            ("input_to_inh", inputs_ids, inh_neuron_ids),
+            ("exc_to_inh", exc_neuron_ids, inh_neuron_ids),
+            ("inh_to_exc", inh_neuron_ids, exc_neuron_ids),
+        ]
 
         # Now that all connections have been created,
         # request their descriptors from NEST.
@@ -361,48 +494,21 @@ class DiehlNetwork(BaseSpikingTransformer):
             for conn_type_name, pre_ids, post_ids in populations_to_connect
         }
 
+        network_objects_tuple = self._get_network_objects_tuple()
+
         self.network_objects = network_objects_tuple(
             exc_neuron_ids=exc_neuron_ids,
             inh_neuron_ids=inh_neuron_ids,
             generators_ids=generators_ids,
             inputs_ids=inputs_ids,
             all_connection_descriptors=all_connection_descriptors,
-            exc_neurons_spike_recorder_id=exc_neurons_spike_recorder_id
-            if create_spike_recorders
-            else None,
-            inh_neurons_spike_recorder_id=inh_neurons_spike_recorder_id
-            if create_spike_recorders
-            else None,
+            exc_neurons_spike_recorder_id=exc_neurons_spike_recorder_id,
+            inh_neurons_spike_recorder_id=inh_neurons_spike_recorder_id,
         )
 
     def _to_spike_rates(self, X):
-        if len(np.ravel(X[X < 0])) > 0:
-            # a failsafe in case X can be negative (i.e. if we do not use GRF)
-            return minmax_scale(X) * (self.high_rate - self.low_rate) + self.low_rate
-        else:
-            # note that in this case X will not necessarily range from low_rate to high_rate
-            return X * (self.high_rate - self.low_rate) + self.low_rate
+        return X * (self.high_rate - self.low_rate) + self.low_rate
 
-    def _get_initial_parameters(self):
-        return deepcopy(snn_parameters)
-
-    def _get_connection_spec(self, def_conn, p, r):
-        if p == None:
-            return def_conn
-        else:
-            if r == None:
-                conn = {
-                    "rule": "pairwise_bernoulli",
-                    "p": p,
-                }
-            else:
-                conn = {
-                    "rule": "pairwise_bernoulli",
-                    "p": p,
-                    "mask": {"circular": {"radius": r}},
-                }
-
-            return conn
 
     def run_the_simulation(self, X, y_train):
         """Encode X into input spiking rates
@@ -420,8 +526,17 @@ class DiehlNetwork(BaseSpikingTransformer):
         * Nothing is returned.
         """
         testing_mode = y_train is None
-        n_epochs = self.network_parameters["epochs"] if not testing_mode else 1
+        n_epochs = self.epochs if not testing_mode else 1
+
+        if len(np.ravel(X[X<0])) > 0 or self.minmax_scale:
+            print("Inputs will be scaled to (0,1) range.")
+            if not testing_mode:
+                X = self.scaler.fit_transform(X)
+            else:
+                X = self.scaler.transform(X)
+
         input_spike_rates = self._to_spike_rates(X)
+
         record_weights = not testing_mode
         record_spikes = testing_mode
 
@@ -436,9 +551,7 @@ class DiehlNetwork(BaseSpikingTransformer):
                 # Weight normalization
                 if (
                     not testing_mode
-                    and not self.network_parameters[
-                        "weight_normalization_during_training"
-                    ]
+                    and not self.weight_normalization
                     is None
                 ):
                     for neuron_id in self.network_objects.exc_neuron_ids:
@@ -448,9 +561,7 @@ class DiehlNetwork(BaseSpikingTransformer):
                         w = nest.GetStatus(this_neuron_input_synapses, "weight")
                         w = (
                             np.array(w)
-                            * self.network_parameters[
-                                "weight_normalization_during_training"
-                            ]
+                            * self.weight_normalization
                             / sum(w)
                         )
                         nest.SetStatus(this_neuron_input_synapses, "weight", w)
@@ -459,10 +570,10 @@ class DiehlNetwork(BaseSpikingTransformer):
                 nest.SetStatus(
                     self.network_objects.generators_ids, [{"rate": r} for r in x]
                 )
-                nest.Simulate(self.network_parameters["one_vector_longtitude"])
+                nest.Simulate(self.time)
 
                 nest.SetStatus(self.network_objects.generators_ids, {"rate": 0.0})
-                nest.Simulate(self.network_parameters["intervector_pause"])
+                nest.Simulate(self.intervector_pause)
 
                 if record_spikes:
                     for neuron_type_name, neurons_ids, spike_recorder_id in (
@@ -533,16 +644,71 @@ class DiehlNetwork(BaseSpikingTransformer):
 
 
 if __name__ == "__main__":
-    from sklearn.datasets import load_iris
+    import os
+    os.environ["PYNEST_QUIET"] = "1"
 
-    X, y = load_iris(as_frame=False, return_X_y=True)
+    from fsnn_classifiers.datasets import load_data
+    from fsnn_classifiers.components.preprocessing.grf import GRF
 
-    network = DiehlNetwork(
-        quiet=False, p=(0.1, 0.6, 0.5), r=(None, 0.3, 0.5), spatial="free"
-    )
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import Normalizer, StandardScaler, MinMaxScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.metrics import f1_score
+    from sklearn.model_selection import StratifiedKFold
 
-    # test all main methods
-    network.fit(X, y)
+    import numpy as np
 
-    X_ = network.transform(X)
-    X_ = network.fit_transform(X, y)
+    import json
+        
+    def main():
+
+        plasticity = "stdp_tanh_synapse"
+
+
+        X_train, X_test, y_train, y_test = load_data(dataset='digits', 
+                                                    seed=1337,
+                                                    )
+        
+        # we want to use cross-validation
+        X = np.concatenate([X_train, X_test], axis=0)
+        y = np.concatenate([y_train, y_test])
+        
+        # load config
+
+        path_to_configs = './experiments/configs/digits/SparseDiehlNetwork/'
+        with open(f"{path_to_configs}/{plasticity}/exp_cfg.json", 'r') as f:
+            cfg = json.load(f)
+
+        cfg["DiehlNetwork"]["epochs"] = 1
+        cfg["DiehlNetwork"]["synapse_model"] = plasticity
+        cfg["DiehlNetwork"]["quiet"] = False
+
+        skf = StratifiedKFold(n_splits=5, random_state=1337, shuffle=True)
+        cv_res = []
+        for train_idx, test_idx in skf.split(X, y):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test = y[train_idx], y[test_idx]
+
+            if "Normalizer" in cfg.keys():
+                nrm = Normalizer(norm=cfg["Normalizer"]["norm"].lower())
+            elif "StandardScaler" in cfg.keys():
+                nrm = StandardScaler()
+            else:
+                nrm = MinMaxScaler()
+
+            grf = GRF(**cfg["GRF"])
+            net = DiehlNetwork(**cfg["DiehlNetwork"])
+            dec = LogisticRegression(**cfg["LogisticRegression"])
+                    
+            model = make_pipeline(nrm, grf, net, dec)
+                    
+            model.fit(X_train, y_train)
+
+            y_pred = model.predict(X_test)
+
+            cv_res.append(np.round(f1_score(y_test, y_pred, average='micro'),2))
+                
+        return cv_res
+
+    cv_res = main()
+    print(cv_res)

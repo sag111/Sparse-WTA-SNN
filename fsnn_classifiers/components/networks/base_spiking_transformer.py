@@ -6,8 +6,72 @@ from fsnn_classifiers.components.networks.utils import check_nest_objects
 
 import nest
 
+import abc
+
 
 class BaseSpikingTransformer(BaseEstimator, TransformerMixin):
+
+    @abc.abstractmethod
+    def _get_network_objects_tuple(self, *args, **kwargs):
+        """
+        A method for creating the named tuple of network objects.
+        """
+        return None
+    
+    @abc.abstractmethod
+    def _get_parameters(self, *args, **kwargs):
+        """
+        A method for setting the parameters of the NEST objects.
+        """
+        return None
+    
+    @abc.abstractmethod
+    def _create_neuron_populations(self, *args, **kwargs):
+        """
+        A method for creating NEST neurons.
+        """
+        return None
+    
+    @abc.abstractmethod
+    def _connect_neuron_populations(self, *args, **kwargs):
+        """
+        A method for connecting NEST neurons.
+        """
+        return None
+    
+    @abc.abstractmethod
+    def _create_network(self, *args, **kwargs):
+        """
+        A method for creating the network.
+        """
+        return None
+    
+    @abc.abstractmethod
+    def run_the_simulation(self, *args, **kwargs):
+        """
+        A method for running the simulation.
+        """
+        return None
+    
+    def _check_modules(self, quiet):
+        
+        """
+        Check if custom NEST modules are installed.
+        """
+
+        nest.set_verbosity('M_QUIET')
+        try:
+            nest.Install("diehl_neuron_module")
+        except:
+            if not quiet:
+                print("diehl_neuron_module is installed.")
+
+        try:
+            nest.Install("stdptanhmodule")
+        except:
+            if not quiet:
+                print("stdptanhmodule is installed.")
+
     def fit(self, X, y):
         if hasattr(self, '_validate_data'):
             # requires sklearn>=0.23
@@ -29,20 +93,6 @@ class BaseSpikingTransformer(BaseEstimator, TransformerMixin):
         # when switching actions.
         self.last_state_ = 'train'
         return self
-        
-    def _check_modules(self, quiet):
-        nest.set_verbosity('M_QUIET')
-        try:
-            nest.Install("diehl_neuron_module")
-        except:
-            if not quiet:
-                print("diehl_neuron_module is installed.")
-
-        try:
-            nest.Install("stdptanhmodule")
-        except:
-            if not quiet:
-                print("stdptanhmodule is installed.")
 
 
     def transform(self, X):
