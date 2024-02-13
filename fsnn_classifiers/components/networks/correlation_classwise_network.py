@@ -302,6 +302,10 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         else:
             X_s = self.scaler.transform(X)
 
+        X_s = np.clip(X_s, 0, 1)
+
+        #X_s = 0.5*(1+np.tanh(X))
+
         progress_bar = tqdm(
             total=n_epochs * len(X),
             disable=self.quiet,
@@ -365,12 +369,18 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                        
                         output_spike_times = np.round((output_spike_times - sample_time)/0.1, 0).astype(int) - 1
 
+                        output_spike_times = output_spike_times[output_spike_times > 0]
+
                         # convert array indices into the spike train
                         output_spikes = np.zeros(self.exp_steps, dtype=np.uint8)
-                        output_spikes[output_spike_times] = 1
+
+                        if len(output_spike_times) > 0:
+                            output_spikes[output_spike_times] = 1
                        
-                        # compute correlations
-                        output_correlations[vector_number, n_idx] = self._corr_integral(output_spikes)
+                            # compute correlations
+                            output_correlations[vector_number, n_idx] = self._corr_integral(output_spikes)
+                        else:
+                            output_correlations[vector_number, n_idx] = 0
                     
                     # Empty the detector.
                     nest.SetStatus(self.network_objects.spike_recorder_id, {'n_events': 0})
