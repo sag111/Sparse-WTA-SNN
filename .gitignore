@@ -5,3 +5,4 @@ log/*
 __init__.pyc
 *.pyc
 **/.ipynb_checkpoints
+**/__pycache__/
