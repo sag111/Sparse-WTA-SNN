@@ -25,6 +25,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         max_samples=1., # number of samples for each sub-network
         bootstrap_features=False,
         synapse_model="stdp_nn_symm_synapse",
+        decoding="frequency",
         V_th=-54.,
         t_ref=4.,
         tau_m=60.,
@@ -71,6 +72,12 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         self.n_jobs = n_jobs
         self.warm_start = warm_start
         self.quiet=quiet
+
+        self.decoding = decoding
+        if self.decoding == "frequency":
+            self.decode_spikes = self._frequency_decoding
+        else:
+            self.decode_spikes = self._correlation_decoding
 
         # have to create these for sklearn
 
@@ -127,7 +134,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
          spike_recorder_id) = self._create_neuron_populations(number_of_inputs=number_of_inputs, 
                                                               number_of_classes=self.number_of_classes, 
                                                               neuron_model=neuron_model,
-                                                              generator_type="spike_generator",
+                                                               generator_type="spike_generator",
                                                               neuron_parameters=neuron_parameters, 
                                                               has_teacher=True, 
                                                               create_spike_recorders=testing_mode)
@@ -159,11 +166,11 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
         # S0 -- reference sequence (shape = (time,)), S1 -- adversarial sequence (shape = (time,))
         self.S0 = self._generate_reference_sequence(self.spike_p, self.steps)
-        self.S1 = self._generate_correlated_sequence(np.random.rand(len(self.S0)), self.spike_p, 0, ensure_pearson=False)
+        #self.S1 = self._generate_correlated_sequence(np.random.rand(len(self.S0)), self.spike_p, 0, ensure_pearson=False)
 
         # precompute teacher-related sequences for efficiency
         self.rnf_seq = np.repeat(self.S0.reshape((1,1,self.steps)), self.inp_mul, axis=1)
-        self.adv_seq = np.repeat(self.S1.reshape((1,1,self.steps)), self.inp_mul, axis=1)
+        #self.adv_seq = np.repeat(self.S1.reshape((1,1,self.steps)), self.inp_mul, axis=1)
 
         assert np.count_nonzero(self.S0) > 0, "No spikes in reference frequency. Please increase spike_p."
 
@@ -285,7 +292,31 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             return int(most_common[0][0])
         else:
             return int(np.round(np.median(votes), 0))
+        
+    def _frequency_decoding(self, all_spikes, current_neuron, sample_time):
+        return np.sum(all_spikes['senders'] == current_neuron)
+    
+    def _correlation_decoding(self, all_spikes, current_neuron, sample_time):
 
+        # convert output spike times into array indices
+                        
+        output_spike_times = all_spikes['times'][all_spikes['senders'] == current_neuron]
+        
+        output_spike_times = np.round((output_spike_times - sample_time)/0.1, 0).astype(int) - 1
+
+        output_spike_times = output_spike_times[output_spike_times > 0]
+
+        # convert array indices into the spike train
+        output_spikes = np.zeros(self.exp_steps, dtype=np.uint8)
+
+        if len(output_spike_times) > 0:
+            output_spikes[output_spike_times] = 1
+        
+            # compute correlations
+            return self._corr_integral(output_spikes)
+        else:
+            return 0
+        
     def run_the_simulation(self, X, y_train=None):
         testing_mode = y_train is None
         
@@ -303,8 +334,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             X_s = self.scaler.transform(X)
 
         X_s = np.clip(X_s, 0, 1)
-
-        #X_s = 0.5*(1+np.tanh(X))
 
         progress_bar = tqdm(
             total=n_epochs * len(X),
@@ -331,8 +360,8 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 inp_time_list = self._spikes_to_times(input_spike_trains, sample_time)
                 rnf_time_list = self._spikes_to_times(self.rnf_seq, 
                                                       sample_time+self.tau_s)
-                adv_time_list = self._spikes_to_times(self.adv_seq, 
-                                                      sample_time+self.tau_s)
+                #adv_time_list = self._spikes_to_times(self.adv_seq, 
+                #                                      sample_time+self.tau_s)
 
 
                 # The simulation itself.
@@ -342,13 +371,36 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 if not testing_mode:
 
                     teacher_dict = {}
+            
+                    nest.SetStatus(
+                        self.network_objects.neuron_ids,
+                        [
+                            {
+                                # Inject negative stimulation current
+                                # into all neurons that do not belong
+                                # to the current class, so that to
+                                # prevent them from spiking
+                                # (and thus from learning
+                                # the current class).
+                                'I_e': 0. if current_neuron in active_neurons[vector_number] else -1e+3,
+                                # That current may have made the neuron's
+                                # potential too negative.
+                                # We reset the potential, so that previous
+                                # stimulation not inhibit spiking
+                                # in response to the current input.
+                                'V_m': self.E_L,
+                            }
+                            for current_neuron in range(self.n_estimators*len(self.classes_))
+                        ]
+                    )
+
                     for current_neuron, cur_teacher_id in enumerate(self.network_objects.teacher_ids):
                         # for current class neurons -- teacher signal is the time-shifted reference sequence
                         # for other classes -- the time-shifted adversarial sequence with negative current
                         if current_neuron in active_neurons[vector_number]:
                             teacher_dict[cur_teacher_id.get('global_id')]=self._get_teacher_current(rnf_time_list[0]['spike_times'], I=self.I_exc)
                         else:
-                            teacher_dict[cur_teacher_id.get('global_id')]=self._get_teacher_current(adv_time_list[0]['spike_times'], I=self.I_inh)
+                            teacher_dict[cur_teacher_id.get('global_id')]=self._get_teacher_current(rnf_time_list[0]['spike_times'], I=0)
 
 
                     self.network_objects.teacher_ids.set(list(teacher_dict.values()))
@@ -360,27 +412,11 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                     #   'times': spike_times_array,
                     #   'senders': senders_ids_array
                     # }
+                   
                     all_spikes = nest.GetStatus(self.network_objects.spike_recorder_id, keys='events')[0]
                     
                     for n_idx, current_neuron in enumerate(self.network_objects.neuron_ids):
-                        # convert output spike times into array indices
-                        
-                        output_spike_times = all_spikes['times'][all_spikes['senders'] == current_neuron]
-                       
-                        output_spike_times = np.round((output_spike_times - sample_time)/0.1, 0).astype(int) - 1
-
-                        output_spike_times = output_spike_times[output_spike_times > 0]
-
-                        # convert array indices into the spike train
-                        output_spikes = np.zeros(self.exp_steps, dtype=np.uint8)
-
-                        if len(output_spike_times) > 0:
-                            output_spikes[output_spike_times] = 1
-                       
-                            # compute correlations
-                            output_correlations[vector_number, n_idx] = self._corr_integral(output_spikes)
-                        else:
-                            output_correlations[vector_number, n_idx] = 0
+                        output_correlations[vector_number, n_idx] = self._decode_spikes(all_spikes, current_neuron, sample_time)
                     
                     # Empty the detector.
                     nest.SetStatus(self.network_objects.spike_recorder_id, {'n_events': 0})
@@ -449,71 +485,5 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             y_pred[i] = self._most_frequent_class(np.argmax(s, axis=1))
         
         return y_pred
-            
-
-if __name__ == "__main__":
-
-    from sklearn.datasets import load_iris
-    from fsnn_classifiers.components.preprocessing import GRF
-    from sklearn.pipeline import Pipeline
-    from sklearn.model_selection import cross_validate, StratifiedKFold
-    from sklearn.preprocessing import MinMaxScaler, Normalizer
-
-    def run_experiment(epochs, n_estimators, plasticity, quiet=True):
-
-        X, y = load_iris(as_frame=False, return_X_y=True)
-
-        n_fields = 25
-
-        preprocessor = Normalizer(norm='l2')
-        encoder = GRF(n_fields=n_fields)
-        network = CorrelationClasswiseNetwork(n_fields=n_fields,
-                                    n_estimators=n_estimators, 
-                                    max_features=1.0, 
-                                    max_samples=0.7, 
-                                    bootstrap_features=True,
-                                    synapse_model=plasticity,
-                                    spike_p=0.07,
-                                    t_ref=1.0,
-                                    tau_m=70.0,
-                                    I_inh=-1e2,
-                                    epochs=epochs, 
-                                    time=100.0,
-                                    tau_s=0.6,
-                                    intervector_pause=50.,
-                                    corr_time=5.0,
-                                    early_stopping=True, 
-                                    quiet=quiet)
-
-
-        pipe = Pipeline([ ('prp', preprocessor),
-                        ('enc', encoder), 
-                        ('net', network),])
-        
-        
-        cv_results = cross_validate(pipe, 
-                                    X, 
-                                    y, 
-                                    cv=StratifiedKFold(n_splits=5),
-                                    scoring='f1_micro'
-                                    )
-        
-        return cv_results
-    
-    epochs = 10
-    n_estimators = 301
-
-    quiet = False
-    print_all = True
-
-    plasticity = "stdp_tanh_synapse"
-
-    
-    cv_results = run_experiment(epochs, n_estimators, plasticity, quiet)
-
-    if print_all:
-        for i in range(5):
-            print(f"FOLD {i} (f1-micro): {cv_results['test_score'][i]}")
-    print(f"AVG: {np.mean(cv_results['test_score'])} \pm {np.std(cv_results['test_score'])}")
 
     

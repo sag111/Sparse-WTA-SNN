@@ -1,2 +1,0 @@
-from fsnn_classifiers.estimators.classwise_network_classifier import ClasswiseNetworkClassifier
-from fsnn_classifiers.estimators.multilayer_diehl_network import MultilayerDiehlNetwork

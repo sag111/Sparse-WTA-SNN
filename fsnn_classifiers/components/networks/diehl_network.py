@@ -45,7 +45,6 @@ class DiehlNetwork(BaseSpikingTransformer):
         warm_start=False,
         quiet=True,
         weight_normalization=None,
-        minmax_scale=False,
         **kwargs,
     ):
         self.random_state = random_state
@@ -68,7 +67,6 @@ class DiehlNetwork(BaseSpikingTransformer):
         self.synapse_model = synapse_model
         self.intervector_pause = intervector_pause
         self.weight_normalization = weight_normalization
-        self.minmax_scale = minmax_scale
 
         # sparcity
         self.p = p
@@ -528,12 +526,9 @@ class DiehlNetwork(BaseSpikingTransformer):
         testing_mode = y_train is None
         n_epochs = self.epochs if not testing_mode else 1
 
-        if len(np.ravel(X[X<0])) > 0 or self.minmax_scale:
-            print("Inputs will be scaled to (0,1) range.")
-            if not testing_mode:
-                X = self.scaler.fit_transform(X)
-            else:
-                X = self.scaler.transform(X)
+        if len(np.ravel(X[X<0])) > 0:
+            print("Inputs with negative values will be clipped to 0.")
+            X = np.clip(X, 0)
 
         input_spike_rates = self._to_spike_rates(X)
 

@@ -74,9 +74,6 @@ class PoissonClasswiseNetwork(BaseClasswiseBaggingNetwork):
         self.low_rate = low_rate
         self.epochs = epochs
         self.time = time
-        self.minmax_scale = minmax_scale
-
-        self.scaler = MinMaxScaler()
         
 
     def _create_network(self, testing_mode):
@@ -150,12 +147,9 @@ class PoissonClasswiseNetwork(BaseClasswiseBaggingNetwork):
         testing_mode = y_train is None
         n_epochs = self.epochs if not testing_mode else 1
 
-        if len(np.ravel(X[X<0])) > 0 or self.minmax_scale:
-            print("Inputs will be scaled to (0,1) range.")
-            if not testing_mode:
-                X = self.scaler.fit_transform(X)
-            else:
-                X = self.scaler.transform(X)
+        if len(np.ravel(X[X<0])) > 0:
+            print("Inputs with negative values will be clipped to 0.")
+            X = np.clip(X, 0)
 
         input_spike_rates = self._to_spike_rates(X)
 
@@ -257,68 +251,3 @@ class PoissonClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
         if record_spikes:
             return output_spiking_rates
-        
-if __name__ == "__main__":     
-    from sklearn.datasets import load_iris
-    from fsnn_classifiers.components.preprocessing import GRF
-    from fsnn_classifiers.components.decoding.own_rate_population_decoder import OwnRatePopulationDecoder
-    from sklearn.pipeline import Pipeline
-    from sklearn.model_selection import cross_validate, StratifiedKFold
-    from sklearn.preprocessing import MinMaxScaler, Normalizer
-
-    def run_experiment(epochs, n_estimators, plasticity, quiet=True):
-
-        X, y = load_iris(as_frame=False, return_X_y=True)
-
-        n_fields = 15
-
-        preprocessor = Normalizer(norm='l2')
-        encoder = GRF(n_fields=n_fields)
-        network = PoissonClasswiseNetwork(n_fields=n_fields,
-                                            n_estimators=n_estimators,
-                                            synapse_model=plasticity,
-                                            tau_m=70.0,
-                                            epochs=epochs,
-                                            boostrap_features=False,
-                                            max_features=1.0,
-                                            max_samples=0.7,
-                                            t_ref=9.0,
-                                            high_rate=800,
-                                            time=1200,
-                                            early_stopping=True,
-                                            minmax_scale=False, 
-                                            quiet=quiet)
-        decoder = OwnRatePopulationDecoder()
-
-
-        pipe = Pipeline([ ('prp', preprocessor),
-                        ('enc', encoder), 
-                        ('net', network),
-                        ('dec', decoder)
-                        ])
-        
-        
-        cv_results = cross_validate(pipe, 
-                                    X, 
-                                    y, 
-                                    cv=StratifiedKFold(n_splits=5),
-                                    scoring='f1_micro'
-                                    )
-        
-        return cv_results
-    
-    epochs = 1
-    n_estimators = 301
-
-    quiet = False
-    print_all = True
-
-    plasticity = "stdp_tanh_synapse"
-
-    
-    cv_results = run_experiment(epochs, n_estimators, plasticity, quiet)
-
-    if print_all:
-        for i in range(5):
-            print(f"FOLD {i} (f1-micro): {cv_results['test_score'][i]}")
-    print(f"AVG: {np.mean(cv_results['test_score'])} \pm {np.std(cv_results['test_score'])}")

@@ -1,14 +1,62 @@
-from sklearn.datasets import load_iris, load_breast_cancer, load_digits, load_diabetes, load_wine
-from sklearn.model_selection import train_test_split
 import numpy as np
 
+import os
+import pickle
 import csv
 import librosa
 import pandas as pd
 
-import os
+import struct
+from array import array
+from collections import defaultdict
 
-def extract_wav_features(soundFilesFolder, csvFileName, n_mfcc = 20):
+from sklearn.datasets import (load_iris, 
+                              load_breast_cancer, 
+                              load_digits, 
+                              load_diabetes, 
+                              load_wine)
+from sklearn.model_selection import train_test_split
+
+class MnistDataloader(object):
+    def __init__(self, 
+                 training_images_filepath: str,
+                 training_labels_filepath: str,
+                 test_images_filepath: str, 
+                 test_labels_filepath: str):
+        self.training_images_filepath = training_images_filepath
+        self.training_labels_filepath = training_labels_filepath
+        self.test_images_filepath = test_images_filepath
+        self.test_labels_filepath = test_labels_filepath
+    
+    def read_images_labels(self, images_filepath: str, labels_filepath: str) -> tuple:        
+        labels = []
+        with open(labels_filepath, 'rb') as file:
+            magic, size = struct.unpack(">II", file.read(8))
+            if magic != 2049:
+                raise ValueError('Magic number mismatch, expected 2049, got {}'.format(magic))
+            labels = array("B", file.read())        
+        
+        with open(images_filepath, 'rb') as file:
+            magic, size, rows, cols = struct.unpack(">IIII", file.read(16))
+            if magic != 2051:
+                raise ValueError('Magic number mismatch, expected 2051, got {}'.format(magic))
+            image_data = array("B", file.read())        
+        images = []
+        for i in range(size):
+            images.append([0] * rows * cols)
+        for i in range(size):
+            img = np.array(image_data[i * rows * cols:(i + 1) * rows * cols])
+            img = img.reshape(28, 28)
+            images[i][:] = img            
+        
+        return images, labels
+            
+    def load_data(self):
+        x_train, y_train = self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
+        x_test, y_test = self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
+        return (x_train, y_train),(x_test, y_test)
+
+def extract_wav_features(soundFilesFolder: str, csvFileName: str, n_mfcc: int = 20):
     print("The features of the files in the folder "+soundFilesFolder+" will be saved to "+csvFileName)
     header = 'filename chroma_stft rmse spectral_centroid spectral_bandwidth rolloff zero_crossing_rate'
     for i in range(1, n_mfcc+1):
@@ -39,7 +87,7 @@ def extract_wav_features(soundFilesFolder, csvFileName, n_mfcc = 20):
     file.close()
     print("End of extractWavFeatures")
 
-def preprocess_fsdd(csvFileName, drop_extra=True):
+def preprocess_fsdd(csvFileName: str, drop_extra: bool = True) -> pd.DataFrame:
     print(csvFileName+ " will be preprocessed")
     data = pd.read_csv(csvFileName)
     data['number'] = data['filename'].str[:1]
@@ -57,12 +105,12 @@ def preprocess_fsdd(csvFileName, drop_extra=True):
     print("Preprocessing is finished")
     return data
 
-def load_data(dataset, 
-              test_size=0.25, 
-              n_mfcc=30, 
-              drop_extra=True,
-              dhl_syn="stdp_nn_symm_synapse",
-              seed=42):
+def load_data(dataset: str, 
+              test_size:float = 0.25, 
+              n_mfcc: int = 30, 
+              drop_extra: bool = True,
+              max_train: int = 60000,
+              seed: int = 42) -> tuple:
     if dataset == "iris":
         X, y = load_iris(return_X_y=True)
         X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=seed, test_size=test_size)
@@ -97,140 +145,47 @@ def load_data(dataset,
         X_test = np.asarray(test_data.iloc[:, :-1]).astype(np.float32)
         y_test = np.asarray(test_data.iloc[:, -1]).astype(np.int32)
 
-    elif dataset == "diehl-digits":
+    elif dataset == "mnist":
+        loader = MnistDataloader(
+            training_images_filepath = f"{os.path.dirname(__file__)}/_mnist_data/full/train-images.idx3-ubyte",
+            training_labels_filepath = f"{os.path.dirname(__file__)}/_mnist_data/full/train-labels.idx1-ubyte",
+            test_images_filepath = f"{os.path.dirname(__file__)}/_mnist_data/full/t10k-images.idx3-ubyte",
+            test_labels_filepath = f"{os.path.dirname(__file__)}/_mnist_data/full/t10k-labels.idx1-ubyte",
+        )
 
-        synapses = {"stdp_nn_symm_synapse":"stdp",
-                        "stdp_tanh_synapse":"NC",
-                        "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse":"PPX",
-                        }
-        
-        data_path = os.path.join(os.path.dirname(__file__), "../../diehl_digits/")
+        (X_train, y_train), (X_test, y_test) = loader.load_data()
+        X_train = np.array(X_train).reshape((-1, 784))
+        X_test = np.array(X_test).reshape((-1, 784))
+        y_train = np.array(y_train)
+        y_test = np.array(y_test)
 
-        if not os.path.isdir(data_path):
+        samples = defaultdict(list)
+        labels = defaultdict(list)
 
-            # create the files and store them
+        for x, y in zip(X_train, y_train):
+            if len(samples[y]) < int(max_train/10):
+                samples[y].append(x)
+                labels[y].append(y)
             
-            from sklearn.pipeline import Pipeline
-            from sklearn.preprocessing import StandardScaler
-            from fsnn_classifiers.components.preprocessing.grf import GRF
-            from fsnn_classifiers.components.networks.diehl_network import DiehlNetwork
+        X_train = []
+        y_train = []
+        for sample, label in zip(samples.values(), labels.values()):
+            X_train.extend(sample)
+            y_train.extend(label)
+        X_train = np.array(X_train)
+        y_train = np.array(y_train)
 
-            os.mkdir(data_path)
-            
-            X, y = load_digits(return_X_y=True)
-            X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=seed, test_size=test_size)
+    elif dataset == "mnist1000":
+        mnist_path = f"{os.path.dirname(__file__)}/_mnist_data/mini-mnist-1000.pickle"
 
-            for syn, syn_name in synapses.items():
+        with open(mnist_path, 'rb') as fp:
+            data = pickle.load(fp)
 
-                diehl_params = {"high_rate":500.0,
-                                "t_ref":(4.0, 9.0),
-                                "tau_m":(60.0, 50.0),
-                                "w_syn":(20.0, -15.0),
-                                "n_neurons":(550, 550),
-                                "quiet":True,
-                                "synapse_model":syn, 
-                                "epochs":1,
-                                "time":350,
-                                "random_state":seed,
-                                }
-                
-                pipe = Pipeline(steps=[
-                    ("SS", StandardScaler()),
-                    ("GRF", GRF(n_fields=7)),
-                    ("DHL", DiehlNetwork(**diehl_params))
-                ])
-
-                X_train_tr = pipe.fit_transform(X_train, y_train)
-                X_test_tr = pipe.transform(X_test)
-
-                with open(os.path.join(data_path, f"data_{syn}.npz"), 'wb') as f:
-                    np.savez(f, 
-                             X_train=X_train_tr, 
-                             y_train=y_train,
-                             X_test=X_test_tr,
-                             y_test=y_test,
-                             )
-                    
-                print("Diehl-encoded data created!")
-                    
-        with open(os.path.join(data_path, f"data_{dhl_syn}.npz"), 'rb') as f:
-            data = np.load(f)
-
-            X_train=data['X_train']
-            X_test=data['X_test']
-            y_train=data['y_train']
-            y_test=data['y_test']
-    
-    elif dataset == "diehl-fsdd":
-
-        synapses = {"stdp_nn_symm_synapse":"stdp",
-                        "stdp_tanh_synapse":"NC",
-                        "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse":"PPX",
-                        }
-        
-        data_path = os.path.join(os.path.dirname(__file__), "../../diehl_fsdd/")
-
-        if not os.path.isdir(data_path):
-
-            # create the files and store them
-            
-            from sklearn.pipeline import Pipeline
-            from sklearn.preprocessing import StandardScaler
-            from fsnn_classifiers.components.preprocessing.grf import GRF
-            from fsnn_classifiers.components.networks.diehl_network import DiehlNetwork
-
-            os.mkdir(data_path)
-            
-            X_train, X_test, y_train, y_test = load_data(dataset='fsdd', n_mfcc=30, drop_extra=True)
-
-            for syn, syn_name in synapses.items():
-
-                diehl_params = {"high_rate":550.0,
-                                 "t_ref":(4.0, 3.0),
-                                 "tau_m":(130.0, 30.0),
-                                 "w_syn":(13.0, -12.0),
-                                 "n_neurons":(550, 550),
-                                "quiet":True,
-                                "synapse_model":syn, 
-                                "epochs":1,
-                                "time":350,
-                                "random_state":seed,
-                                }
-                
-                pipe = Pipeline(steps=[
-                    ("SS", StandardScaler()),
-                    ("GRF", GRF(n_fields=7)),
-                    ("DHL", DiehlNetwork(**diehl_params))
-                ])
-
-                X_train_tr = pipe.fit_transform(X_train, y_train)
-                X_test_tr = pipe.transform(X_test)
-
-                with open(os.path.join(data_path, f"data_{syn}.npz"), 'wb') as f:
-                    np.savez(f, 
-                             X_train=X_train_tr, 
-                             y_train=y_train,
-                             X_test=X_test_tr,
-                             y_test=y_test,
-                             )
-                    
-                print("Diehl-encoded data created!")
-                    
-        with open(os.path.join(data_path, f"data_{dhl_syn}.npz"), 'rb') as f:
-            data = np.load(f)
-
-            X_train=data['X_train']
-            X_test=data['X_test']
-            y_train=data['y_train']
-            y_test=data['y_test']
+        X_train, y_train = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
+        X_test, y_test = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
 
     else:
         raise NotImplementedError("Wrong dataset name.")
     
     return X_train, X_test, y_train, y_test
-
-if __name__ == "__main__":
-   
-   load_data("diehl-fsdd")
-   load_data("diehl-digits")
    
