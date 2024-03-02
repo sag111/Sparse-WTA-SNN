@@ -75,9 +75,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
         self.decoding = decoding
         if self.decoding == "frequency":
-            self.decode_spikes = self._frequency_decoding
+            self._decode_spikes = self._frequency_decoding
         else:
-            self.decode_spikes = self._correlation_decoding
+            self._decode_spikes = self._correlation_decoding
 
         # have to create these for sklearn
 
