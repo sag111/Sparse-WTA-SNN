@@ -6,3 +6,4 @@ __init__.pyc
 *.pyc
 **/.ipynb_checkpoints
 **/__pycache__/
+**/*.pkl
