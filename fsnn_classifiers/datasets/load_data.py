@@ -187,5 +187,9 @@ def load_data(dataset: str,
     else:
         raise NotImplementedError("Wrong dataset name.")
     
+    train_idxs = np.arange(0, len(X_train), 1).astype(np.int32)
+    np.random.shuffle(train_idxs)
+    X_train = X_train[train_idxs]
+    y_train = y_train[train_idxs]
     return X_train, X_test, y_train, y_test
    

@@ -15,6 +15,8 @@ from sklearn.preprocessing import minmax_scale, MinMaxScaler
 
 from collections import Counter
 
+import os
+
 
 class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
     def __init__(
@@ -46,6 +48,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         n_jobs=1,
         warm_start=False,
         quiet=True,
+        log_weights=False,
         **kwargs,
     ):
         
@@ -72,12 +75,13 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         self.n_jobs = n_jobs
         self.warm_start = warm_start
         self.quiet=quiet
+        self.log_weights = log_weights
 
         self.decoding = decoding
         if self.decoding == "frequency":
-            self.decode_spikes = self._frequency_decoding
+            self._decode_spikes = self._frequency_decoding
         else:
-            self.decode_spikes = self._correlation_decoding
+            self._decode_spikes = self._correlation_decoding
 
         # have to create these for sklearn
 
@@ -318,6 +322,16 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             return 0
         
     def run_the_simulation(self, X, y_train=None):
+
+        if self.log_weights:
+            weights = np.asarray(
+            nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
+        )
+            save_dir = f"{os.getcwd()}/ccn_weights/"
+            os.makedirs(save_dir, exist_ok=True)
+            with open(f"{save_dir}/weight_0_0.npy", 'wb') as fp:
+                np.save(fp, weights)
+
         testing_mode = y_train is None
         
         n_epochs = self.epochs if not testing_mode else 1
@@ -334,7 +348,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             X_s = self.scaler.transform(X)
 
         X_s = np.clip(X_s, 0, 1)
-
+        
         progress_bar = tqdm(
             total=n_epochs * len(X),
             disable=self.quiet,
@@ -343,6 +357,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             previous_weights = np.asarray(
                 [-1] * len(self.network_objects.all_connection_descriptors)
             )
+
+        if self.log_weights and not testing_mode:
+            input_freqs = np.zeros((self.number_of_classes, self.n_features_in_))
 
         for epoch in range(n_epochs):
 
@@ -356,6 +373,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 sample_time = epoch_time + vector_number * self.full_time
 
                 input_spike_trains = self._vector_to_sequence(x, self.steps, self.inp_mul)
+
+                if self.log_weights and not testing_mode:
+                    input_freqs[y_train[vector_number]] += input_spike_trains.sum(axis=(-2,-1))
 
                 inp_time_list = self._spikes_to_times(input_spike_trains, sample_time)
                 rnf_time_list = self._spikes_to_times(self.rnf_seq, 
@@ -428,6 +448,20 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 nest.Simulate(self.intervector_pause)
 
                 progress_bar.update()
+
+                if self.log_weights and not testing_mode:
+                    weights = np.asarray(
+                    nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
+                )
+                    save_dir = f"{os.getcwd()}/ccn_weights/"
+                    os.makedirs(save_dir, exist_ok=True)
+                    with open(f"{save_dir}/weight_{epoch}_{vector_number+1}.npy", 'wb') as fp:
+                        np.save(fp, weights)
+
+                    if epoch > 0:
+                        with open(f"{save_dir}/mean_train_rates.npy", 'wb') as fp:
+                            np.save(fp, input_freqs)
+
             if record_weights or early_stopping:
                 weights = np.asarray(
                     nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
