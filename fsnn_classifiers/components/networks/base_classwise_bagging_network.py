@@ -30,14 +30,19 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
         n_estimators=1, # number of sub-networks
         max_features=1., # number of features for each sub-network
         max_samples=1., # number of samples for each sub-network
+        w_inh=None,
+        weight_normalization=None,
         bootstrap_features=False,
         random_state=None,
+        **kwargs,
         ):
 
         self.n_estimators = int(n_estimators)
         self.max_features = max_features
         self.max_samples = max_samples
         self.bootstrap_features = bootstrap_features
+        self.weight_normalization = weight_normalization
+        self.w_inh = w_inh
 
         if n_fields is not None:
             self.n_fields = int(n_fields)
@@ -145,7 +150,7 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
                         feature_indices.append(f)
                         class_indices.append(c)
 
-            weights = np.random.rand(len(feature_indices))
+            weights = np.random.rand(len(feature_indices)) * 0.1
             
             synapse_parameters.update(weight=weights)
 
@@ -232,6 +237,21 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
                 syn_spec="static_synapse",
             )
 
+        if self.w_inh is not None and teacher_ids is not None:
+            out_idx = np.arange(0, len(neuron_ids), 1).astype(np.int32).reshape((self.n_estimators, -1))
+            n_classes = out_idx.shape[-1]
+            # iterate over classes
+            for i in range(n_classes):
+                for c in range(n_classes):
+                    if c != i:
+                        nest.Connect(
+                            pre=np.array(neuron_ids)[out_idx[:, i]],
+                            post=np.array(neuron_ids)[out_idx[:, c]],
+                            conn_spec="one_to_one",
+                            syn_spec={'synapse_model': 'static_synapse',
+                            'weight': np.ones(self.n_estimators) * self.w_inh}
+                            )
+
         if spike_recorder_id is not None:
             nest.Connect(neuron_ids, spike_recorder_id, conn_spec='all_to_all')
 
@@ -240,28 +260,28 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
     
     def _bootstrap_samples(self, X, y):
         
-        neurons_to_keep = {k:[] for k in range(len(X))}
+        active_neurons = {k:set() for k in range(len(X))}
 
         if self.data_sampler is not None:
             # collect indices of neurons that will be active for a given sample
-            for i, (train_idx, test_idx) in enumerate(self.data_sampler.split(X,y)):
+            for i, (_, test_idx) in enumerate(self.data_sampler.split(X,y)):
                 # get silent neuron indices
                 cls_neurons = np.ravel(self.out_idx[i, :])
                 for s_i in test_idx:
-                    neurons_to_keep[s_i].append(cls_neurons[y[s_i]])
+                    active_neurons[s_i].add(cls_neurons[y[s_i]])
         else:
             
             for i in range(self.n_estimators):
                 for s_i, y_i in enumerate(y):
                     cls_neurons = np.ravel(self.out_idx[i, :])
-                    neurons_to_keep[s_i].append(cls_neurons[y_i])
+                    active_neurons[s_i].add(cls_neurons[y_i])
             
-        active_neurons = {k:np.unique(v) for k, v in neurons_to_keep.items()}
+        #active_neurons = {k:list(np.unique(v)) for k, v in neurons_to_keep.items()}
 
         for key, y_i in zip(active_neurons.keys(), y):
             # we want to use each sample at least once
             if len(active_neurons[key]) == 0:
                 idx = choices(range(self.out_idx.shape[0]), k=1)
-                active_neurons[key].append(self.out_idx[idx, y_i])
+                active_neurons[key].add(int(self.out_idx[idx, y_i]))
             
         return active_neurons
