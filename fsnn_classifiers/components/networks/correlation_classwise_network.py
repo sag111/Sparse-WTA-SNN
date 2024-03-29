@@ -144,7 +144,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         feature_indices, 
         class_indices) = self._get_parameters(number_of_inputs, self.number_of_classes, testing_mode)
 
-        synapse_parameters = flip_plasticity(synapse_parameters)
+        #synapse_parameters = flip_plasticity(synapse_parameters)
 
         self.E_L = neuron_parameters.get("E_L", -70.0) # just in case
 
