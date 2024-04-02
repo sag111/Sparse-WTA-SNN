@@ -6,4 +6,8 @@ __init__.pyc
 *.pyc
 **/.ipynb_checkpoints
 **/__pycache__/
+**/trials/
 **/*.pkl
+**/*.npy
+**/results/
+**/*.sh
