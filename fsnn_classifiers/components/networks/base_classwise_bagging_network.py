@@ -9,7 +9,7 @@ from random import sample, choices
 from sklearn.model_selection import StratifiedShuffleSplit
 
 from fsnn_classifiers.components.networks.base_spiking_transformer import BaseSpikingTransformer
-from fsnn_classifiers.components.networks.common_model_components import disable_plasticity
+from fsnn_classifiers.components.networks.common_model_components import disable_plasticity, flip_plasticity
 from fsnn_classifiers.components.networks.utils import convert_random_parameters_to_nest
 
 import nest
@@ -26,11 +26,11 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
         Wmax=1.0, # max synaptic weight
         mu_plus=0.0,
         mu_minus=0.0,
-        inp_mul=1,
         n_estimators=1, # number of sub-networks
         max_features=1., # number of features for each sub-network
         max_samples=1., # number of samples for each sub-network
         w_inh=None,
+        w_init=1.0,
         weight_normalization=None,
         bootstrap_features=False,
         random_state=None,
@@ -44,11 +44,12 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
         self.weight_normalization = weight_normalization
         self.w_inh = w_inh
 
+        self.w_init = w_init
+
         if n_fields is not None:
             self.n_fields = int(n_fields)
         else:
             self.n_fields = 1
-        self.inp_mul = inp_mul
 
         self.synapse_model = synapse_model
         self.V_th = V_th
@@ -116,7 +117,7 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
         else:
             # (n_fields * n_features) -> (n_features, n_fields)
             # (n_classes * n_estimators) -> (n_estimators, n_classes)
-            self.n_features = int(number_of_inputs / self.n_fields / self.inp_mul)
+            self.n_features = int(number_of_inputs / self.n_fields)
 
             out_idx = np.arange(0, 
                                 number_of_classes * self.n_estimators, 
@@ -124,7 +125,7 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
             
             in_idx = np.arange(0, 
                                number_of_inputs, 
-                               1).astype(np.int32).reshape(self.n_features, self.n_fields*self.inp_mul)
+                               1).astype(np.int32).reshape(self.n_features, self.n_fields)
             
             feat_idx = list(np.arange(0, self.n_features, 1).astype(np.int32))
 
@@ -150,7 +151,7 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
                         feature_indices.append(f)
                         class_indices.append(c)
 
-            weights = np.random.rand(len(feature_indices)) * 0.1
+            weights = np.random.rand(len(feature_indices)) * self.w_init
             
             synapse_parameters.update(weight=weights)
 
@@ -275,8 +276,6 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
                 for s_i, y_i in enumerate(y):
                     cls_neurons = np.ravel(self.out_idx[i, :])
                     active_neurons[s_i].add(cls_neurons[y_i])
-            
-        #active_neurons = {k:list(np.unique(v)) for k, v in neurons_to_keep.items()}
 
         for key, y_i in zip(active_neurons.keys(), y):
             # we want to use each sample at least once
@@ -285,3 +284,24 @@ class BaseClasswiseBaggingNetwork(BaseSpikingTransformer):
                 active_neurons[key].add(int(self.out_idx[idx, y_i]))
             
         return active_neurons
+    
+    def _early_stopping(self, weights, previous_weights):
+        flag = False
+        if (
+            np.abs(
+                weights - previous_weights
+            ) < 0.001
+        ).all():
+            print(
+                'Early stopping because none of the weights'
+                'have changed by more than 0.001 for an epoch.',
+                'This usually means that the neuron emits no spikes.'
+            )
+            flag = True
+        if np.logical_or(
+            weights < 0.1,
+            weights > 0.9
+        ).all():
+            print('Early stopping on weights convergence to 0 or 1.')
+            flag = True
+        return flag

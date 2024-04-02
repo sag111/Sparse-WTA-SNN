@@ -18,8 +18,6 @@ from collections import Counter
 
 import os
 
-from scipy.stats import pearsonr
-
 
 class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
     def __init__(
@@ -29,14 +27,12 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         max_features=1., # number of features for each sub-network
         max_samples=1., # number of samples for each sub-network
         bootstrap_features=False,
-        synapse_model="stdp_nn_symm_synapse",
+        synapse_model="stdp_nn_pre_centered_synapse",
         decoding="frequency",
         V_th=-54.,
         t_ref=4.,
         tau_m=60.,
         I_exc=1e7,
-        I_inh=-1.,
-        #rate = 300,
         epochs=1,
         time=1000,
         intervector_pause=50.0, # pause in-between vectors
@@ -49,13 +45,13 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         resolution=0.1,
         sample_norm=1,
         w_inh=None,
+        w_init=1.0,
         weight_normalization=None,
         random_state=None,
         early_stopping=True,
         n_jobs=1,
         warm_start=False,
         quiet=True,
-        log_weights=False,
         **kwargs,
     ):
         
@@ -68,13 +64,13 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             Wmax=Wmax,
             mu_plus=mu_plus,
             mu_minus=mu_minus,
-            inp_mul=1,
             n_estimators=n_estimators,
             max_features=max_features,
             max_samples=max_samples,
             bootstrap_features=bootstrap_features,
             random_state=random_state,
             w_inh=w_inh,
+            w_init=w_init,
             weight_normalization=weight_normalization,
         )
         
@@ -84,7 +80,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         self.n_jobs = n_jobs
         self.warm_start = warm_start
         self.quiet=quiet
-        self.log_weights = log_weights
         self.sample_norm = sample_norm
 
         self.decoding = decoding
@@ -104,7 +99,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         self.corr_time = corr_time
         self.tau_s = tau_s # shift time between input and teacher sequence (in ms)
         self.I_exc = I_exc
-        self.I_inh = I_inh
         self.ref_seq_interval = ref_seq_interval
 
         # some pre-computed values to reduce boilerplate code
@@ -122,7 +116,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
     def _create_network(self, testing_mode):
         
-        number_of_inputs = self.n_features_in_ * self.inp_mul
+        number_of_inputs = self.n_features_in_
         random_state = (
             self.random_state if not self.random_state is None
             else generate_random_state()
@@ -144,7 +138,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         feature_indices, 
         class_indices) = self._get_parameters(number_of_inputs, self.number_of_classes, testing_mode)
 
-        #synapse_parameters = flip_plasticity(synapse_parameters)
+        synapse_parameters = flip_plasticity(synapse_parameters)
 
         self.E_L = neuron_parameters.get("E_L", -70.0) # just in case
 
@@ -185,46 +179,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             all_connection_descriptors=all_connection_descriptors,
             spike_recorder_id=spike_recorder_id
         )
-    
-    '''
-    def _get_teacher_current(self, spike_times: list, I: float = 1e7):
-
-        start_times = []
-        end_times = []
-        start_values = []
-        end_values = []
-
-        if len(spike_times) == 0:
-            return {'amplitude_times':[], 
-                'amplitude_values':[], 
-                'allow_offgrid_times':True,
-                }
-        
-        for i in range(len(spike_times)-1):
-            if spike_times[i+1] - spike_times[i] > 1.1:
-                # change the current
-                start_times.append(spike_times[i])
-                start_values.append(I)
-                end_times.append(spike_times[i]+0.1)
-                end_values.append(0.0)
-            else:
-                # keep the current
-                start_times.append(spike_times[i])
-                start_values.append(I)
-                end_times.append(np.inf)
-                end_values.append(np.inf)
-                
-
-        amplitude_times = np.stack((np.array(start_times),np.array(end_times)), axis=-1).flatten()
-        amplitude_values = np.stack((np.array(start_values),np.array(end_values)), axis=-1).flatten()
-
-        mask = np.isfinite(amplitude_times)
-        
-        return {'amplitude_times':amplitude_times[mask].astype(float), 
-                'amplitude_values':amplitude_values[mask].astype(float), 
-                'allow_offgrid_times':True,
-                }
-    '''
 
     def _corr_integral(self, x_ij):
         # x_ij.shape = (time,)
@@ -307,41 +261,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                  "allow_offgrid_times":True}
                  for current_neuron in range(self.n_estimators*len(self.classes_))]
 
-        
-
-    '''
-    def _generate_teacher_times(self, n_samples, n_epochs):
-
-        base_times = self.encoder.ref_times.reshape((1, 1, self.encoder.ref_times.shape[-1]))
-        base_times = np.repeat(base_times, n_epochs * n_samples, axis=1).reshape(n_epochs, n_samples, -1)
-
-        epoch_offsets = np.arange(n_epochs).reshape(-1, 1, 1) * n_samples * self.full_time
-        vector_offsets = np.arange(n_samples).reshape(1, -1, 1) * self.full_time
-
-        base_times += epoch_offsets + vector_offsets
-
-        return base_times
-    
-    def _generate_teacher_dict(self, n_samples, n_epochs, active_neurons, teacher_times):
-
-        teacher_dict = dict()
-
-        for epoch in range(n_epochs):
-            teacher_dict[epoch] = dict()
-            for vector_number in range(n_samples):
-                teacher_dict[epoch][vector_number] = dict()
-                for current_neuron, cur_teacher_id in enumerate(self.network_objects.teacher_ids):
-                    # for current class neurons -- teacher signal is the time-shifted reference sequence
-                    # for other classes -- the time-shifted adversarial sequence with negative current
-                    if current_neuron in active_neurons[vector_number]:
-                        teacher_dict[epoch][vector_number][cur_teacher_id.get('global_id')]=self._get_teacher_current(teacher_times[epoch][vector_number], I=self.I_exc)
-                    else:
-                        teacher_dict[epoch][vector_number][cur_teacher_id.get('global_id')]=self._get_teacher_current(teacher_times[epoch][vector_number], I=0)
-
-        return teacher_dict
-        '''
-    
-
     def norm_weights(self):
 
         if self.weight_normalization is not None:
@@ -359,25 +278,11 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         assert len(X[X < 0]) == 0, "Input features cannot be negative."
         result = X / X.sum(axis=-1, keepdims=True) # L1-normalization
         result /= self.sample_norm
-        #result *= (self.encoder.S0.sum(axis=-1) / self.encoder.S0.shape[-1])
-        #if not testing_mode:
-        #    self.max_feat = result.max()
-        #result /= self.max_feat
-        #result = np.clip(result, 0, 1)
         
         return result
 
 
     def run_the_simulation(self, X, y_train=None):
-
-        #if self.log_weights:
-        #    weights = np.asarray(
-        #    nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
-        #)
-        #    save_dir = f"{os.getcwd()}/ccn_weights/"
-        #    os.makedirs(save_dir, exist_ok=True)
-        #    with open(f"{save_dir}/weight_0_0.npy", 'wb') as fp:
-        #        np.save(fp, weights)
 
         testing_mode = y_train is None
         
@@ -394,11 +299,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         
         X_s = self.norm_samples(X, testing_mode)
         X_s = self.encoder(X_s) # convert into spike sequences
-        #print("Encoding done")
-        print(X_s.shape)
-        freqs = X_s.sum(axis=(-2,-1))/(self.time / 1000)
-        print(freqs.min(), freqs.max(), np.mean(freqs))
-        print(self.encoder.S0.sum(axis=-1)/(self.time / 1000))
         
         progress_bar = tqdm(
             total=n_epochs * len(X),
@@ -408,9 +308,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             previous_weights = np.asarray(
                 [-1] * len(self.network_objects.all_connection_descriptors)
             )
-
-        #if self.log_weights and not testing_mode:
-        #    input_freqs = np.zeros((self.number_of_classes, self.n_features_in_))
 
         for epoch in range(n_epochs):
 
@@ -423,24 +320,10 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
                 sample_time = epoch_time + vector_number * self.full_time
 
-                #if self.log_weights and not testing_mode:
-                #    input_freqs[y_train[vector_number]] += input_spike_trains.sum(axis=(-2,-1))
-
                 inp_time_list = get_time_dict(spikes_to_times(inp_spikes=x, 
                                                               time=self.time, 
                                                               tau_s=sample_time, 
                                                               resolution=self.resolution))
-                
-                #print("Got time dict")
-                #print(len(inp_time_list), len(self.network_objects.generators_ids))
-                #print(inp_time_list[0])
-                #print(inp_time_list)
-                #rnf_time_list = self._spikes_to_times(self.rnf_seq, 
-                #                                      sample_time+self.tau_s)
-                #adv_time_list = self._spikes_to_times(self.adv_seq, 
-                #                                      sample_time+self.tau_s)
-
-
                 # The simulation itself.
                 # set input spike times
                 
@@ -459,17 +342,6 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                             self.network_objects.neuron_ids,
                             inhibition_dict[vector_number]
                         )
-
-                    #for current_neuron, cur_teacher_id in enumerate(self.network_objects.teacher_ids):
-                        # for current class neurons -- teacher signal is the time-shifted reference sequence
-                        # for other classes -- the time-shifted adversarial sequence with negative current
-                    #    if current_neuron in active_neurons[vector_number]:
-                    #        teacher_dict[cur_teacher_id.get('global_id')]=self._get_teacher_current(rnf_time_list[0]['spike_times'], I=self.I_exc)
-                    #    else:
-                    #        teacher_dict[cur_teacher_id.get('global_id')]=self._get_teacher_current(rnf_time_list[0]['spike_times'], I=0)
-
-
-                    #self.network_objects.teacher_ids.set(list(teacher_dict[epoch][vector_number].values()))
                 
                 nest.Simulate(self.exp_time)
 
@@ -495,43 +367,17 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
                 progress_bar.update()
 
-                #if self.log_weights and not testing_mode:
-                #    weights = np.asarray(
-                #    nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
-                #)
-                #    save_dir = f"{os.getcwd()}/ccn_weights/"
-                #    os.makedirs(save_dir, exist_ok=True)
-                #    with open(f"{save_dir}/weight_{epoch}_{vector_number+1}.npy", 'wb') as fp:
-                #        np.save(fp, weights)
-
-                #    if epoch > 0:
-                #        with open(f"{save_dir}/mean_train_rates.npy", 'wb') as fp:
-                #            np.save(fp, input_freqs)
-
             if record_weights or early_stopping:
                 weights = np.asarray(
                     nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
                 )
 
             if early_stopping:
-                if (
-                    np.abs(
-                        weights - previous_weights
-                    ) < 0.001
-                ).all():
-                    print(
-                        'Early stopping because none of the weights'
-                        'have changed by more than 0.001 for an epoch.',
-                        'This usually means that the neuron emits no spikes.'
-                    )
-                    break
-                if np.logical_or(
-                    weights < 0.1,
-                    weights > 0.9
-                ).all():
-                    print('Early stopping on weights convergence to 0 or 1.')
-                    break
+                flag = self._early_stopping(weights, previous_weights)
                 previous_weights = weights
+                if flag:
+                    break
+
         progress_bar.close()
 
         if record_weights:
