@@ -44,7 +44,7 @@ def run(args):
     X_train, X_test, y_train, y_test = load_data("mnist1000") #load_data("mnist", max_train=args.max_train) #
     params = {'decoding': args.decoding, 
               'intervector_pause': 150, 
-              'ref_seq_interval': 21, 
+              'ref_seq_interval': 3, 
               't_ref': 5.0, 
               'tau_s': 0.4}
     
@@ -62,11 +62,12 @@ def run(args):
             max_samples=args.max_samples,
             synapse_model=args.plasticity,
             epochs=args.epochs,
-            corr_time=20.0,
+            corr_time=0.0,
             time=args.time, 
             quiet=args.quiet,
             sample_norm=1,
             w_inh=None,
+            w_init=0.0,
             weight_normalization=None,
             early_stopping=True,
             **params,
@@ -82,12 +83,6 @@ def run(args):
         x_tr = nrm.fit_transform(x_tr, y_tr)
         x_tr = ccn.fit_transform(x_tr, y_tr)
 
-        #weights = ccn.weights_
-        #new_weights = []
-        #for pre_idx, pos_idx, weight in weights:
-        #    new_weights.append((pre_idx, pos_idx, 1.0-weight))
-        #ccn.weights_ = new_weights
-
         if args.log_results:
             with open(f"{parent_directory}/results/train_{args.decoding}_{i}.pkl", 'wb') as fp:
                 pickle.dump((x_tr,y_tr), fp)
@@ -99,20 +94,14 @@ def run(args):
         pop_dec.fit(x_tr, y_tr)
         reg_dec.fit(x_tr, y_tr)
 
-        if args.log_results:
-
-            # Step 3: Save the resulting figure
-            plt.figure(figsize=(60,30), dpi=300)  # set figsize to control the size of the plot
-            plot_tree(dec, filled=True, rounded=True)
-            plt.title("Decision Tree")
-            plt.savefig(f"{parent_directory}/results/decision_tree_{args.decoding}_{i}.png")  # save the figure
-
         # get accuracy
         x_ts = X_train[test_idxs]
         y_ts = y_train[test_idxs]
 
         x_ts_ = nrm.transform(x_ts)
         x_ts = ccn.transform(x_ts_)
+
+        print("out freqs", x_ts.min(), x_ts.max(), x_ts.mean())
 
         if args.log_results:
             with open(f"{parent_directory}/results/test_{args.decoding}_{i}.pkl", 'wb') as fp:
@@ -131,6 +120,8 @@ def run(args):
 
         del x_tr, y_tr, x_ts, x_ts_, y_ts, y_pr
         del nrm, ccn, dec, pop_dec
+
+        break
    
 if __name__ == "__main__":
     args = parse_args()
