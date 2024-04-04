@@ -18,7 +18,7 @@ def generate_phi_theta(spike_p, inp_vector):
 
     return phi.reshape((-1,1)), theta.reshape((-1,1))
 
-
+'''
 def generate_correlated_sequence(inp_vector, ref_seq, spike_p, N):
         phi, theta = generate_phi_theta(spike_p, inp_vector)
         s = np.random.rand(len(inp_vector), N)
@@ -31,6 +31,22 @@ def generate_correlated_sequence(inp_vector, ref_seq, spike_p, N):
             der[i][switch_idx[:switch_num]] = 0
 
         return der.astype(np.uint8)
+'''
+
+def generate_correlated_sequence(inp_vector, ref_seq, spike_p, N):
+     
+     ref_seq = np.ravel(ref_seq)
+     out = np.zeros((len(inp_vector), N))
+     one_idxs = np.nonzero(ref_seq)[0]
+
+     for i, feat in enumerate(inp_vector):
+          num_spikes_to_keep = np.floor(feat * np.sum(ref_seq)).astype(np.int32)
+          np.random.shuffle(one_idxs)
+          cur_one_idxs = one_idxs[:num_spikes_to_keep]
+          out[i, cur_one_idxs] = ref_seq[cur_one_idxs]
+     return out
+
+
 
 def spikes_to_times(inp_spikes, time, tau_s, resolution = 0.1):
      spike_times = (np.arange(0, time, resolution).reshape((1,-1)) + resolution + tau_s).round(1)

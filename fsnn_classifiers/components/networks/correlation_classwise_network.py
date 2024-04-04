@@ -18,6 +18,8 @@ from collections import Counter
 
 import os
 
+import pickle
+
 
 class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
     def __init__(
@@ -138,7 +140,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         feature_indices, 
         class_indices) = self._get_parameters(number_of_inputs, self.number_of_classes, testing_mode)
 
-        synapse_parameters = flip_plasticity(synapse_parameters)
+        #synapse_parameters = flip_plasticity(synapse_parameters)
 
         self.E_L = neuron_parameters.get("E_L", -70.0) # just in case
 
@@ -272,6 +274,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 w = np.array(nest.GetStatus(this_neuron_input_synapses, "weight"))
                 w /= w.sum()
                 w *= self.weight_normalization
+                w = np.clip(w, 0, 1)
                 nest.SetStatus(this_neuron_input_synapses, "weight", w)
 
     def norm_samples(self, X, testing_mode=False):
@@ -284,7 +287,14 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
     def run_the_simulation(self, X, y_train=None):
 
+        
+
         testing_mode = y_train is None
+
+        if not testing_mode:
+            nest.SetStatus(self.network_objects.neuron_ids, {"V_th": 1000.0})
+        else:
+            nest.SetStatus(self.network_objects.neuron_ids, {"V_th": self.V_th})
         
         n_epochs = self.epochs if not testing_mode else 1
 
@@ -317,13 +327,20 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 output_correlations = np.zeros((len(X), self.number_of_classes*self.n_estimators))
 
             for vector_number, x in enumerate(X_s):
+                
+                self.norm_weights()
 
                 sample_time = epoch_time + vector_number * self.full_time
+
+                #print(sample_time)
 
                 inp_time_list = get_time_dict(spikes_to_times(inp_spikes=x, 
                                                               time=self.time, 
                                                               tau_s=sample_time, 
                                                               resolution=self.resolution))
+                
+                #print(inp_time_list)
+                
                 # The simulation itself.
                 # set input spike times
                 
@@ -332,9 +349,10 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 if not testing_mode:
 
                     teacher_list = self._get_teacher_dict(active_neurons[vector_number], sample_time, self.I_exc)
+
                     nest.SetStatus(self.network_objects.teacher_ids, teacher_list)
 
-                    self.norm_weights()
+                    #self.norm_weights()
 
                     #teacher_dict = {}
                     if self.w_inh is None:
@@ -342,16 +360,26 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                             self.network_objects.neuron_ids,
                             inhibition_dict[vector_number]
                         )
+
+                
                 
                 nest.Simulate(self.exp_time)
+
+                
 
                 if record_spikes:
                     # NEST returns all_spikes == {
                     #   'times': spike_times_array,
                     #   'senders': senders_ids_array
                     # }
-                   
+
                     all_spikes = nest.GetStatus(self.network_objects.spike_recorder_id, keys='events')[0]
+
+                    #with open("./input_times.pkl", 'wb') as fp:
+                    #    pickle.dump(inp_time_list, fp)
+
+                    #with open("./output_times.pkl", "wb") as fp:
+                    #    pickle.dump(all_spikes, fp)
                     
                     for n_idx, current_neuron in enumerate(self.network_objects.neuron_ids):
                         output_correlations[vector_number, n_idx] = self._decode_spikes(all_spikes, current_neuron, sample_time)
