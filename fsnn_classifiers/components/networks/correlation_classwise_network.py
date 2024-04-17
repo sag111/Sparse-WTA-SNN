@@ -48,6 +48,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         sample_norm=1,
         w_inh=None,
         w_init=1.0,
+        sigma_w = 0.0,
         weight_normalization=None,
         random_state=None,
         early_stopping=True,
@@ -77,6 +78,8 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         )
         
         self._check_modules(quiet)
+
+        self.sigma_w = sigma_w
 
         self.early_stopping = early_stopping
         self.n_jobs = n_jobs
@@ -308,7 +311,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             inhibition_dict = self._generate_inhibition_dict(X, active_neurons)
         
         X_s = self.norm_samples(X, testing_mode)
-        X_s = self.encoder(X_s) # convert into spike sequences
+        #X_s = self.encoder(X_s) # convert into spike sequences
         
         progress_bar = tqdm(
             total=n_epochs * len(X),
@@ -327,7 +330,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 output_correlations = np.zeros((len(X), self.number_of_classes*self.n_estimators))
 
             for vector_number, x in enumerate(X_s):
-                
+
+                x = self.encoder(x.reshape((1, -1))).reshape((X.shape[-1], -1)) # convert into spike sequences
+                                
                 self.norm_weights()
 
                 sample_time = epoch_time + vector_number * self.full_time
@@ -409,6 +414,15 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         progress_bar.close()
 
         if record_weights:
+
+            mu_w = np.mean(weights[weights>0])
+            sigma_w = self.sigma_w*np.std(weights[weights>0])
+            #max_w = np.max(weights)
+
+            weights[weights <= mu_w + sigma_w] = 0.0
+            #weights /= max_w
+            
+
             weights = convert_neuron_ids_to_indices(
                 weights,
                 self.network_objects.all_connection_descriptors,
