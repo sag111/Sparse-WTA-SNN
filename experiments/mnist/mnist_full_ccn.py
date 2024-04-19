@@ -1,6 +1,9 @@
 import os
 os.environ["PYNEST_QUIET"] = "1"
 
+import sys
+sys.path.insert(0, '/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN')
+
 from fsnn_classifiers.components.networks.correlation_classwise_network import CorrelationClasswiseNetwork
 from fsnn_classifiers.components.decoding.own_rate_population_decoder import OwnRatePopulationDecoder
 from fsnn_classifiers.components.preprocessing.grf import GRF
@@ -24,10 +27,10 @@ import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("plasticity", type=str)
+    parser.add_argument("--plasticity", type=str, default="stdp_nn_restr_synapse")
     parser.add_argument("--max_train", type=int, default=15000)
     parser.add_argument("--n_estimators", type=int, default=1)
-    parser.add_argument("--time", type=int, default=600)
+    parser.add_argument("--time", type=int, default=1000)
     parser.add_argument("--max_samples", type=float, default=1.0)
     parser.add_argument("--max_features", type=float, default=1.0)
     parser.add_argument("--epochs", type=int, default=1)
@@ -91,7 +94,7 @@ def run(args):
         X_train, X_test, y_train, y_test = load_data("mnist", max_train=args.max_train) 
         pipe.fit(X_train, y_train)
 
-        with open(f"{parent_directory}/results/weights_full.pkl", 'wb') as fp:
+        with open(f"{parent_directory}/results/weights_full_{args.n_estimators}_estimators.pkl", 'wb') as fp:
             pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
 
         y_pr = pipe.predict(X_test)
@@ -119,10 +122,10 @@ def run(args):
             x_tr = nrm.fit_transform(x_tr, y_tr)
             x_tr = ccn.fit_transform(x_tr, y_tr)
             
-            with open(f"{parent_directory}/results/train_{args.decoding}_{i}.pkl", 'wb') as fp:
+            with open(f"{parent_directory}/results/train_{args.decoding}_{args.n_estimators}_estimators_{i}_fold.pkl", 'wb') as fp:
                 pickle.dump((x_tr,y_tr), fp)
 
-            with open(f"{parent_directory}/results/weights_{i}.pkl", 'wb') as fp:
+            with open(f"{parent_directory}/results/weights_{args.n_estimators}_estimators_{i}_fold.pkl", 'wb') as fp:
                 pickle.dump(ccn.weights_, fp)
 
             print("SAVED WEIGHTS")
@@ -150,7 +153,7 @@ def run(args):
 
             print("out freqs", x_ts.min(), x_ts.max(), x_ts.mean())
 
-            with open(f"{parent_directory}/results/test_{args.decoding}_{i}.pkl", 'wb') as fp:
+            with open(f"{parent_directory}/results/test_{args.decoding}_{args.n_estimators}_{i}.pkl", 'wb') as fp:
                 pickle.dump((x_ts,y_ts), fp)
 
         else:
