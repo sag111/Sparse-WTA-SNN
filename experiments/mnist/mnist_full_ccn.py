@@ -31,13 +31,14 @@ def parse_args():
     parser.add_argument("--max_train", type=int, default=15000)
     parser.add_argument("--n_estimators", type=int, default=1)
     parser.add_argument("--time", type=int, default=1000)
-    parser.add_argument("--max_samples", type=float, default=1.0)
-    parser.add_argument("--max_features", type=float, default=1.0)
+    parser.add_argument("--max_samples", type=float, default=0.7)
+    parser.add_argument("--max_features", type=float, default=0.7)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--decoding", type=str, default="correlation")
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--log_results", action="store_true")
-    parser.add_argument("--full_ds", action="store_true")
+    parser.add_argument("--full_ds", type=bool, default=False)
+    # parser.add_argument("--full_ds", action="store_true")
     args = parser.parse_args()
     return args
 
@@ -71,9 +72,10 @@ def run(args):
         quiet=args.quiet,
         sample_norm=1,
         w_inh=None,
-        w_init=0.0,
+        w_init=0.05,
         weight_normalization=None,
         early_stopping=True,
+        n_jobs=56,
         **params,
     )
 
@@ -82,6 +84,7 @@ def run(args):
     #reg_dec = LogisticRegression(max_iter=1000000)
 
     pipe = make_pipeline(nrm, ccn)
+
     #print(X_train.max())
     #X_train[X_train > 100] = 255
     
