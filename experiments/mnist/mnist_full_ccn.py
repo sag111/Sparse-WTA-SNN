@@ -75,6 +75,7 @@ def run(args):
         weight_normalization=None,
         early_stopping=True,
         n_jobs=56,
+        parent_directory=parent_directory,
         **params,
     )
 
@@ -96,6 +97,9 @@ def run(args):
         X_train, X_test, y_train, y_test = load_data("mnist", max_train=args.max_train) 
         pipe.fit(X_train, y_train)
 
+        # result_dir = "/Sparse-WTA-SNN/experiments/mnist/results/"
+        # os.makedirs(result_dir, exist_ok=True)
+        
         with open(f"{parent_directory}/results/weights_full_{args.n_estimators}_estimators.pkl", 'wb') as fp:
             pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
 

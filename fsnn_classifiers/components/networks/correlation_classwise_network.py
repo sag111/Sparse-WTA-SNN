@@ -55,6 +55,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         n_jobs=1,
         warm_start=False,
         quiet=True,
+        parent_directory=None,
         **kwargs,
     ):
         
@@ -92,6 +93,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             self._decode_spikes = self._frequency_decoding
         else:
             self._decode_spikes = self._correlation_decoding
+
+
+        self.parent_directory = parent_directory
 
         # have to create these for sklearn
             
@@ -389,7 +393,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                     for n_idx, current_neuron in enumerate(self.network_objects.neuron_ids):
                         output_correlations[vector_number, n_idx] = self._decode_spikes(all_spikes, current_neuron, sample_time)
 
-                    with open(f'/results/predictions_full_train_{self.n_estimators}_estimators.npy', 'wb') as f:
+                    with open(f'{self.parent_directory}/results/predictions_full_train_{self.n_estimators}_estimators.npy', 'wb') as f:
                             np.save(f, output_correlations)
                                                 
                     # Empty the detector.
