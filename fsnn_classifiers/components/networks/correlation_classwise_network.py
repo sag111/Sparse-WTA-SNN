@@ -388,7 +388,10 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                     
                     for n_idx, current_neuron in enumerate(self.network_objects.neuron_ids):
                         output_correlations[vector_number, n_idx] = self._decode_spikes(all_spikes, current_neuron, sample_time)
-                    
+
+                    with open(f'{self.store_predictions_directory}/results/predictions_full_train_{self.n_estimators}_estimators.npy', 'wb') as f:
+                            np.save(f, output_correlations)
+                                                
                     # Empty the detector.
                     nest.SetStatus(self.network_objects.spike_recorder_id, {'n_events': 0})
                    

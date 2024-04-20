@@ -34,11 +34,10 @@ def parse_args():
     parser.add_argument("--max_samples", type=float, default=0.7)
     parser.add_argument("--max_features", type=float, default=0.7)
     parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--decoding", type=str, default="correlation")
+    parser.add_argument("--decoding", type=str, default="frequency")
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--log_results", action="store_true")
-    parser.add_argument("--full_ds", type=bool, default=False)
-    # parser.add_argument("--full_ds", action="store_true")
+    parser.add_argument("--full_ds", action="store_true")
     args = parser.parse_args()
     return args
 
