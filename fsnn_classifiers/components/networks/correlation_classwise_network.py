@@ -330,8 +330,8 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
             epoch_time = epoch * len(X) * self.full_time
             
-            if record_spikes:
-                output_correlations = np.zeros((len(X), self.number_of_classes*self.n_estimators))
+            # if record_spikes:
+            output_correlations = np.zeros((len(X), self.number_of_classes*self.n_estimators))
 
             for vector_number, x in enumerate(X_s):
 
@@ -374,7 +374,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 
                 nest.Simulate(self.exp_time)
 
-                
+                if not record_spikes:    
+                    with open(f'{self.parent_directory}/results/train_outputs_full_train_{self.n_estimators}_estimators.npy', 'wb') as f:
+                        np.save(f, output_correlations)
 
                 if record_spikes:
                     # NEST returns all_spikes == {

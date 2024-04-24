@@ -71,7 +71,7 @@ def run(args):
         quiet=args.quiet,
         sample_norm=1,
         w_inh=None,
-        w_init=0.05,
+        w_init=0.0,
         weight_normalization=None,
         early_stopping=True,
         n_jobs=56,
@@ -95,19 +95,40 @@ def run(args):
     if args.full_ds:
 
         X_train, X_test, y_train, y_test = load_data("mnist", max_train=args.max_train) 
-        pipe.fit(X_train, y_train)
+
+        unique_idxs = np.unique(y_train, return_index=True)[1]
+        for i in range(1, 18):
+            unique_idxs_tmp = np.unique(y_train[500*i:500*(i+1)], return_index=True)[1] + 7000
+            unique_idxs = np.concatenate((unique_idxs, unique_idxs_tmp))
+        pipe.fit(X_train[unique_idxs], y_train[unique_idxs])
+
+        # pipe.fit(X_train, y_train)
+
+        # with open(f"{parent_directory}/results/weights_full_{args.n_estimators}_estimators_w_init_is_zero.pkl", 'wb') as fp:
+        #     pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
+
+        weights = []
+        with open(f'{parent_directory}/results/weights_full_{args.n_estimators}_estimators_w_init_is_zero.pkl', 'rb') as f:
+            while True:
+                try:
+                    weights.append(pickle.load(f))
+                except EOFError:
+                    # print('EOF')
+                    break
+        ccn.weights_ = weights[0]
+
 
         # result_dir = "/Sparse-WTA-SNN/experiments/mnist/results/"
         # os.makedirs(result_dir, exist_ok=True)
         
-        with open(f"{parent_directory}/results/weights_full_{args.n_estimators}_estimators.pkl", 'wb') as fp:
-            pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
+        # with open(f"{parent_directory}/results/weights_full_{args.n_estimators}_estimators.pkl", 'wb') as fp:
+        #     pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
 
-        y_pr = pipe.predict(X_test)
+        y_pr = pipe.predict(X_test[416:])
 
         
 
-        print(f"F1-micro: {f1_score(y_test, y_pr, average='micro')}")
+        print(f"F1-micro: {f1_score(y_test[416:], y_pr, average='micro')}")
 
         return
 
