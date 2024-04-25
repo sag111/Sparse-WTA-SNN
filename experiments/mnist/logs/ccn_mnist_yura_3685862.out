@@ -1,0 +1,13 @@
+
+Apr 20 09:44:42 Install [Info]: 
+    loaded module diehl_neuron_module
+
+Apr 20 09:44:42 Install [Info]: 
+    loaded module The module with memristor-fitting synapse models
+diehl_neuron_module is installed.
+stdptanhmodule is installed.
+Fold 0 (ccn): 0.10000000000000002
+Fold 1 (ccn): 0.10000000000000002
+Fold 2 (ccn): 0.10000000000000002
+Fold 3 (ccn): 0.10000000000000002
+Fold 4 (ccn): 0.10000000000000002

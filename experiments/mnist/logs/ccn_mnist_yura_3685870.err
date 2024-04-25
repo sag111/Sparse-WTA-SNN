@@ -1,0 +1,14 @@
+Matplotlib created a temporary config/cache directory at /tmp/matplotlib-ji2g6kc1 because the default path (/home/users/selibrin/.config/matplotlib) is not a writable directory; it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+  0%|          | 0/10000 [00:00<?, ?it/s]Traceback (most recent call last):
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/mnist/mnist_full_ccn.py", line 181, in <module>
+    run(args) 
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/mnist/mnist_full_ccn.py", line 97, in run
+    pipe.fit(X_train, y_train)
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/sklearn/pipeline.py", line 382, in fit
+    self._final_estimator.fit(Xt, y, **fit_params_last_step)
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/components/networks/base_spiking_transformer.py", line 85, in fit
+    self.run_the_simulation(
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/components/networks/correlation_classwise_network.py", line 398, in run_the_simulation
+    if self.store_predictions_directory:
+AttributeError: 'CorrelationClasswiseNetwork' object has no attribute 'store_predictions_directory'
+  0%|          | 0/10000 [00:00<?, ?it/s]

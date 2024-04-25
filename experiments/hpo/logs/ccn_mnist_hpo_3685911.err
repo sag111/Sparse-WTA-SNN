@@ -1,0 +1,7 @@
+Matplotlib created a temporary config/cache directory at /tmp/matplotlib-wq9s_nfn because the default path (/home/users/selibrin/.config/matplotlib) is not a writable directory; it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+Traceback (most recent call last):
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/hpo/ccn_predefined_s0_mnist_normalized_by_reversing_hpo.py", line 140, in <module>
+    experiment(args)
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/hpo/ccn_predefined_s0_mnist_normalized_by_reversing_hpo.py", line 41, in experiment
+    trial_dir = f"{os.getcwd()}/Sparse-WTA-SNN/experiments/hpo/trials/ensemble_Pooling_GRF_Normalization_CCN_regular_S0_{args.plasticity}_miniMNIST_normalized_by_reversing/"
+AttributeError: 'Namespace' object has no attribute 'plasticity'

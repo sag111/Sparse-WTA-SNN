@@ -1,0 +1,7 @@
+
+Apr 20 13:38:04 Install [Info]: 
+    loaded module diehl_neuron_module
+
+Apr 20 13:38:04 Install [Info]: 
+    loaded module The module with memristor-fitting synapse models
+  0%|          | 0/1 [00:00<?, ?trial/s, best loss=?]  0%|          | 0/1 [1:27:03<?, ?trial/s, best loss=?]

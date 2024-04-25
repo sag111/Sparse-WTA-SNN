@@ -1,0 +1,7 @@
+Matplotlib created a temporary config/cache directory at /tmp/matplotlib-gs6ijwbx because the default path (/home/users/selibrin/.config/matplotlib) is not a writable directory; it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+Traceback (most recent call last):
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/hpo/ccn_predefined_s0_mnist_normalized_by_reversing_hpo.py", line 7, in <module>
+    from fsnn_classifiers.components.networks.correlation_classwise_network_v2 import CorrelationClasswiseNetwork
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/components/networks/correlation_classwise_network_v2.py", line 14, in <module>
+    from fsnn_classifiers.components.networks.common_model_components import flip_plasticity
+ImportError: cannot import name 'flip_plasticity' from 'fsnn_classifiers.components.networks.common_model_components' (/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/components/networks/common_model_components.py)

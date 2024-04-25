@@ -1,0 +1,31 @@
+Matplotlib created a temporary config/cache directory at /tmp/matplotlib-ph2avlxc because the default path (/home/users/selibrin/.config/matplotlib) is not a writable directory; it is highly recommended to set the MPLCONFIGDIR environment variable to a writable directory, in particular to speed up the import of Matplotlib and to better support multiprocessing.
+job exception: __init__() got an unexpected keyword argument 'w_inh'
+
+Traceback (most recent call last):
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/hpo/ccn_predefined_s0_mnist_normalized_by_reversing_hpo.py", line 140, in <module>
+    experiment(args)
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/hpo/ccn_predefined_s0_mnist_normalized_by_reversing_hpo.py", line 126, in experiment
+    adjust(run, search_space, f"{trial_dir}/trials.pkl", h_evals=1, max_evals=args.ho_bound, resume=args.resume)
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/optimization/hpo.py", line 22, in adjust
+    best = run_evals(run, space, n_evals, trial_name)
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/optimization/hpo.py", line 7, in run_evals
+    best = fmin(run, space, algo=tpe.suggest, trials=trials, max_evals=n_evals)
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/fmin.py", line 540, in fmin
+    return trials.fmin(
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/base.py", line 671, in fmin
+    return fmin(
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/fmin.py", line 586, in fmin
+    rval.exhaust()
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/fmin.py", line 364, in exhaust
+    self.run(self.max_evals - n_done, block_until_done=self.asynchronous)
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/fmin.py", line 300, in run
+    self.serial_evaluate()
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/fmin.py", line 178, in serial_evaluate
+    result = self.domain.evaluate(spec, ctrl)
+  File "/s/ls4/groups/g0126/conda_envs/nest/lib/python3.8/site-packages/hyperopt/base.py", line 892, in evaluate
+    rval = self.fn(pyll_rval)
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/experiments/hpo/ccn_predefined_s0_mnist_normalized_by_reversing_hpo.py", line 88, in run
+    ccn = CorrelationClasswiseNetwork(
+  File "/s/ls4/users/selibrin/spiking_researches/Sparse-WTA-SNN/fsnn_classifiers/components/networks/correlation_classwise_network_v2.py", line 61, in __init__
+    super(CorrelationClasswiseNetwork, self).__init__(
+TypeError: __init__() got an unexpected keyword argument 'w_inh'

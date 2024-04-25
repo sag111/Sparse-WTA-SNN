@@ -1,0 +1,13 @@
+
+Apr 20 17:39:07 Install [Info]: 
+    loaded module diehl_neuron_module
+
+Apr 20 17:39:07 Install [Info]: 
+    loaded module The module with memristor-fitting synapse models
+  0%|          | 0/1 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -61.02374734623138, 'Wmax_start': 0.013997442300658209, 'corr_time': 40.0, 'max_features': 0.9, 'max_samples': 0.5, 'min_weight': 0.20103103769900615, 'mu_minus': 0.8812247545766253, 'mu_plus': 0.9872644824923561, 'n_estimators': 7, 'norm': 'std', 'ref_seq_interval': 19, 'synapse_model': 'stdp_nn_symm_synapse', 'tau_m': 70, 'tau_s': 0.5, 'time': 500}
+  0%|          | 0/1 [41:34<?, ?trial/s, best loss=?]                                                     0.28
+  0%|          | 0/1 [41:34<?, ?trial/s, best loss=?]100%|██████████| 1/1 [41:34<00:00, 2494.30s/trial, best loss: -0.28]100%|██████████| 1/1 [41:34<00:00, 2494.30s/trial, best loss: -0.28]
+ 50%|█████     | 1/2 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -56.43343305412298, 'Wmax_start': 0.059052398355577185, 'corr_time': 20.0, 'max_features': 0.3, 'max_samples': 0.1, 'min_weight': 0.2433087800748434, 'mu_minus': 0.3009283959878871, 'mu_plus': 0.9491705969909864, 'n_estimators': 96, 'norm': 'std', 'ref_seq_interval': 10, 'synapse_model': 'stdp_nn_symm_synapse', 'tau_m': 20, 'tau_s': 0.5, 'time': 1500}
+ 50%|█████     | 1/2 [4:26:55<?, ?trial/s, best loss=?]                                                       0.404
+ 50%|█████     | 1/2 [4:26:55<?, ?trial/s, best loss=?]100%|██████████| 2/2 [4:26:55<00:00, 16015.89s/trial, best loss: -0.404]100%|██████████| 2/2 [4:26:55<00:00, 16015.89s/trial, best loss: -0.404]
+ 67%|██████▋   | 2/3 [00:00<?, ?trial/s, best loss=?] 67%|██████▋   | 2/3 [00:23<?, ?trial/s, best loss=?]
