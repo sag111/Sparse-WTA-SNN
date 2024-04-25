@@ -27,6 +27,7 @@ import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--job_id", type=str, default="")
     parser.add_argument("--plasticity", type=str, default="stdp_nn_restr_synapse")
     parser.add_argument("--max_train", type=int, default=15000)
     parser.add_argument("--n_estimators", type=int, default=1)
@@ -42,21 +43,37 @@ def parse_args():
     return args
 
 def run(args):
+    
 
     parent_directory = os.path.dirname(os.path.abspath(__file__))
 
     
-    params = {'decoding': args.decoding, 
-              'V_th': -69.95, 
-              'intervector_pause': 50, 
-              'mu_plus': 0.5, 
-              'mu_minus': 0.25,
-              'ref_seq_interval': 9, 
-              'sigma_w':-0.5,
-              'tau_m': 40.0, 
-              'tau_s': 0.4}
+    # params = {'decoding': args.decoding, 
+    #           'V_th': -69.95, 
+    #           'intervector_pause': 50, 
+    #           'mu_plus': 0.5, 
+    #           'mu_minus': 0.25,
+    #           'ref_seq_interval': 9, 
+    #           'sigma_w':-0.5,
+    #           'tau_m': 40.0, 
+    #           'tau_s': 0.4}
+
+    params = {
+        'V_th': -66.28, 
+        'intervector_pause': 50, 
+        'mu_minus': 0.537477001396814,
+        'mu_plus': 0.21654370404187478,
+        # 'norm': 'max',
+        # 'plasticity': 'stdp_nn_restr_synapse',
+        'ref_seq_interval': 17,
+        'sigma_w': 0.3,
+        'tau_m': 78,
+        'tau_s': 0.3, 
+        # 'time': 920
+    }
     
-    nrm = Normalizer('l2')
+    # nrm = Normalizer('l2')
+    nrm = Normalizer('max')
     
     ccn = CorrelationClasswiseNetwork(
         n_fields=None,
@@ -76,6 +93,7 @@ def run(args):
         early_stopping=True,
         n_jobs=56,
         parent_directory=parent_directory,
+        job_id=args.job_id,
         **params,
     )
 
@@ -108,7 +126,7 @@ def run(args):
         #     pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
 
         weights = []
-        with open(f'{parent_directory}/results/weights_full_{args.n_estimators}_estimators_w_init_is_zero.pkl', 'rb') as f:
+        with open(f'{parent_directory}/results/weights_{args.job_id}.pkl', 'rb') as f:
             while True:
                 try:
                     weights.append(pickle.load(f))
@@ -124,11 +142,11 @@ def run(args):
         # with open(f"{parent_directory}/results/weights_full_{args.n_estimators}_estimators.pkl", 'wb') as fp:
         #     pickle.dump(pipe.named_steps['correlationclasswisenetwork'].weights_, fp)
 
-        y_pr = pipe.predict(X_test[416:])
+        y_pr = pipe.predict(X_test)
 
         
 
-        print(f"F1-micro: {f1_score(y_test[416:], y_pr, average='micro')}")
+        print(f"F1-micro: {f1_score(y_test, y_pr, average='micro')}")
 
         return
 

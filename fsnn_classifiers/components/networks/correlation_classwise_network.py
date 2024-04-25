@@ -56,6 +56,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         warm_start=False,
         quiet=True,
         parent_directory=None,
+        job_id=None,
         **kwargs,
     ):
         
@@ -80,7 +81,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         
         self._check_modules(quiet)
 
-        self.sigma_w = sigma_w
+        self.sigma_w = -sigma_w
 
         self.early_stopping = early_stopping
         self.n_jobs = n_jobs
@@ -96,6 +97,7 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
 
         self.parent_directory = parent_directory
+        self.job_id = job_id
 
         # have to create these for sklearn
             
@@ -374,9 +376,10 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                 
                 nest.Simulate(self.exp_time)
 
-                if not record_spikes:    
-                    with open(f'{self.parent_directory}/results/train_outputs_full_train_{self.n_estimators}_estimators.npy', 'wb') as f:
-                        np.save(f, output_correlations)
+                # if not record_spikes:  
+                #     if self.parent_directory:
+                #         with open(f'{self.parent_directory}/results/train_outputs_{self.job_id}.npy', 'wb') as f:
+                #             np.save(f, output_correlations)
 
                 if record_spikes:
                     # NEST returns all_spikes == {
@@ -395,8 +398,9 @@ class CorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                     for n_idx, current_neuron in enumerate(self.network_objects.neuron_ids):
                         output_correlations[vector_number, n_idx] = self._decode_spikes(all_spikes, current_neuron, sample_time)
 
-                    with open(f'{self.parent_directory}/results/predictions_full_train_{self.n_estimators}_estimators.npy', 'wb') as f:
-                            np.save(f, output_correlations)
+                    if self.parent_directory:
+                        with open(f'{self.parent_directory}/results/predictions_{self.job_id}.npy', 'wb') as f:
+                                np.save(f, output_correlations)
                                                 
                     # Empty the detector.
                     nest.SetStatus(self.network_objects.spike_recorder_id, {'n_events': 0})
