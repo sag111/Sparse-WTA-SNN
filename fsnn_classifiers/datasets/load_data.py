@@ -181,8 +181,8 @@ def load_data(dataset: str,
         with open(mnist_path, 'rb') as fp:
             data = pickle.load(fp)
 
-        X_train, y_train = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
-        X_test, y_test = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
+        X, y = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
+        X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=seed, test_size=test_size)
 
     else:
         raise NotImplementedError("Wrong dataset name.")
