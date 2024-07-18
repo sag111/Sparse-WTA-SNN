@@ -11,3 +11,5 @@ __init__.pyc
 **/*.npy
 **/results/
 **/*.sh
+**/report/
+**/target/
