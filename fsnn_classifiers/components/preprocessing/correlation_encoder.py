@@ -18,21 +18,6 @@ def generate_phi_theta(spike_p, inp_vector):
 
     return phi.reshape((-1,1)), theta.reshape((-1,1))
 
-'''
-def generate_correlated_sequence(inp_vector, ref_seq, spike_p, N):
-        phi, theta = generate_phi_theta(spike_p, inp_vector)
-        s = np.random.rand(len(inp_vector), N)
-        der = np.where(((s < ref_seq) & (s < theta)) | ((s >= ref_seq) & (s < phi)), 1, 0)
-        
-        for i, c in enumerate(inp_vector):
-            switch_num = ((1-c) * np.count_nonzero(der[i])).astype(np.int32) # how many spikes to erase
-            switch_idx = np.where(der[i] > 0)[0]
-            np.random.shuffle(switch_idx)
-            der[i][switch_idx[:switch_num]] = 0
-
-        return der.astype(np.uint8)
-'''
-
 def generate_correlated_sequence(inp_vector, ref_seq, spike_p, N):
      
      ref_seq = np.ravel(ref_seq)
@@ -57,7 +42,6 @@ def spikes_to_times(inp_spikes, time, tau_s, resolution = 0.1):
 def get_time_dict(spike_times):
      return [{"spike_times":list(st_i[st_i>0])} for st_i in spike_times]
      
-
 class CorrelationEncoder(object):
      
      def __init__(self, rate, tau_s, time, resolution, interval):
