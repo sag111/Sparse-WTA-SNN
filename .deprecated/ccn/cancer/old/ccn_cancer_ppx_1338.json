@@ -1,1 +1,0 @@
-{"plasticity": "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse", "dataset": "cancer", "epochs": 1, "seed": 1337, "f1_micro": [0.94, 0.78, 0.83, 0.93, 0.96], "mean": 0.07, "std": 0.07}

@@ -1,1 +1,0 @@
-{"plasticity": "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse", "dataset": "digits", "n_estimators": 301, "epochs": 1, "seed": 1337, "f1_micro": [0.11, 0.16, 0.33, 0.12, 0.29], "mean": 0.2, "std": 0.09}

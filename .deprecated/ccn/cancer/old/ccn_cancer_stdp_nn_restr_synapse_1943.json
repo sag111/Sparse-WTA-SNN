@@ -1,1 +1,0 @@
-{"plasticity": "stdp_nn_restr_synapse", "dataset": "cancer", "n_estimators": 601, "epochs": 5, "seed": 1337, "f1_micro": [0.75, 0.66, 0.89, 0.84, 0.76], "mean": 0.78, "std": 0.08}

@@ -1,1 +1,0 @@
-source /home/yurydavydov/miniconda3/envs/nestenv/bin/nest_vars.sh

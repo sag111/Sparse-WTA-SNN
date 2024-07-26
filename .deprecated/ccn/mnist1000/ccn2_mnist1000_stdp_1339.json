@@ -1,1 +1,0 @@
-{"plasticity": "stdp_nn_restr_synapse", "dataset": "mnist1000", "n_estimators": 1, "max_samples": 1.0, "epochs": 1, "seed": 1337, "f1_micro": [0.1, 0.1, 0.1, 0.1, 0.0975], "mean": 0.1, "std": 0.0}

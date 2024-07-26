@@ -1,1 +1,0 @@
-{"plasticity": "stdp_nn_restr_synapse", "dataset": "iris", "n_estimators": 601, "epochs": 1, "seed": 1337, "f1_micro": [0.97, 0.53, 0.93, 0.67, 0.43], "mean": 0.71, "std": 0.21}

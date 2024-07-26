@@ -1,1 +1,0 @@
-/home/yurydavydov/miniconda3/envs/nestenv/lib/nest/probabilistic_neuron_module.so

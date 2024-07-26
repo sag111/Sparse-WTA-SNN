@@ -1,1 +1,0 @@
-{"plasticity": "stdp_nn_restr_synapse", "dataset": "fsdd", "n_estimators": 31, "n_mfcc": 40, "drop_extra": true, "max_train": 60000, "test_time": null, "epochs": 2, "seed": 1337, "f1_micro": [0.81], "mean": 0.81, "std": 0.0}
