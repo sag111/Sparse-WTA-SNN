@@ -1,0 +1,1 @@
+{"plasticity": "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse", "dataset": "iris", "n_estimators": 151, "epochs": 1, "seed": 1337, "f1_micro": [0.97, 0.83, 0.87, 1.0, 0.97], "mean": 0.93, "std": 0.07}

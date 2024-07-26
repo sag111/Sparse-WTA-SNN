@@ -1,0 +1,1 @@
+{"plasticity": "stdp_tanh_synapse", "dataset": "cancer", "n_estimators": 301, "epochs": 1, "seed": 1337, "f1_micro": [0.9, 0.96, 0.89, 0.93, 0.97], "mean": 0.93, "std": 0.03}

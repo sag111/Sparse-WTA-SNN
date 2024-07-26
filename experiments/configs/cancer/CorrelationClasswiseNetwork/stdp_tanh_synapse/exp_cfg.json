@@ -1,0 +1,31 @@
+{
+    "model_name": "CCN",
+    "module_names": ["preprocessing.multi_norm",
+                     "preprocessing.gaussian_receptive_fields",
+                     "networks.correlation_classwise_network"],
+    "cv": true,
+    "GaussianReceptiveFields": {
+        "n_fields": 30
+    },
+    "MultiNorm": {
+        "type": "ss"
+    },
+    "CorrelationClasswiseNetwork": {
+        "n_estimators": 7,
+        "max_features": 1.0,
+        "max_samples": 0.7,
+        "time":1000,
+        "t_ref":0.0,
+        "w_init":0.001,
+        "mu_plus":0.5,
+        "mu_minus":0.25,
+        "n_fields":30,
+        "V_th": -69.7,
+        "intervector_pause": 150,
+        "ref_seq_interval": 9,
+        "sigma_w": 0.5,
+        "tau_m": 30.0,
+        "tau_s": 0.9,
+        "synapse_model": "stdp_tanh_synapse"
+    }
+}

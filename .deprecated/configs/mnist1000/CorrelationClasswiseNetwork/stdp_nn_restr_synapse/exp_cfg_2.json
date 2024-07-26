@@ -1,0 +1,30 @@
+{
+    "CorrelationClasswiseNetwork": {
+        "n_estimators": 1,
+        "tau_m": 1e20,
+        "n_fields": null,
+        "epochs": 1,
+        "bootstrap_features": false,
+        "intervector_pause": 150.0,
+        "early_stopping": true,
+        "quiet": false,
+        "V_th": -69.9,
+        "t_ref":0.0,
+        "w_init":0.0,
+        "mu_plus":0.0,
+        "mu_minus":0.0,
+        "rate": 500,
+        "max_features": 1.0,
+        "max_samples": 1.0,
+        "sigma_w": 0.0,
+        "tau_minus": 70.0,
+        "tau_plus": 70.0,
+        "tau_s": 0.9,
+        "time": 1000,
+        "synapse_model": "stdp_nn_restr_synapse"
+    },
+    "GRF": {
+        "n_fields": null
+    },
+    "Normalizer": {"norm":"max"}
+}

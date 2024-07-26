@@ -1,0 +1,22 @@
+{
+    "OwnRatePopulationDecoder":{},
+    "PoissonClasswiseNetwork": {
+        "n_estimators": 301,
+        "tau_m": 70.0,
+        "n_fields": 15,
+        "epochs": 1,
+        "bootstrap_features": false,
+        "early_stopping": true,
+        "quiet": true,
+        "max_features": 1.0,
+        "max_samples": 0.7,
+        "t_ref": 9.0,
+        "high_rate": 700,
+        "time": 300,
+        "synapse_model": "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse"
+    },
+    "GRF": {
+        "n_fields": 15
+    },
+    "Normalizer": {"norm":"l2"}
+}

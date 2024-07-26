@@ -1,0 +1,52 @@
+{
+    "model_name": "sparse_bagging_diehl",
+    "module_names": ["preprocessing.multi_norm",
+                     "preprocessing.gaussian_receptive_fields",
+                     "networks.diehl_network",
+                     "decoding.multi_decoder"],
+    "cv": true,
+    "GaussianReceptiveFields": {
+        "n_fields": 5
+    },
+    "MultiNorm": {"type":"ss"},
+    "MultiDecoder": {
+        "mod": ["LogisticRegression", {"max_iter":100000,"solver": "saga","C": 5}]
+    },
+    "DiehlNetwork": {
+        "p": [
+            0.7,
+            null,
+            0.7
+        ],
+        "r": [
+            null,
+            null,
+            0.9
+        ],
+        "spatial": "free",
+        "time": 350,
+        "n_neurons": [
+            50,
+            50
+        ],
+        "tau_m": [
+            130,
+            30
+        ],
+        "high_rate": 450.0,
+        "t_ref": [
+            6.0,
+            3.0
+        ],
+        "w_syn": [
+            20.0,
+            -15.0
+        ],
+        "synapse_model": "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse"
+    },
+    "BaggingClassifier": {
+        "n_estimators": 11,
+        "max_samples": 0.7,
+        "max_features": 1.0
+    }
+}

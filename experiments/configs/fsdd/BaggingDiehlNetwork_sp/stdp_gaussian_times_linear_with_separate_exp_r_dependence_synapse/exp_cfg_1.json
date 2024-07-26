@@ -1,0 +1,41 @@
+{
+    "model_name": "bagging_sp",
+    "module_names": ["preprocessing.multi_norm",
+                     "preprocessing.gaussian_receptive_fields",
+                     "networks.diehl_network",
+                     "decoding.multi_decoder"],
+    "cv": false,
+    "GaussianReceptiveFields": {
+        "n_fields": 7
+    },
+    "MultiNorm": {"type":"l2"},
+    "MultiDecoder": {
+        "mod": ["LogisticRegression", {"max_iter":100000, "solver": "saga", "C": 100}]
+    },
+    "DiehlNetwork": {
+        "time": 350,
+        "n_neurons": [
+            50,
+            50
+        ],
+        "tau_m": [
+            130,
+            30
+        ],
+        "high_rate": 800.0,
+        "t_ref": [
+            4.0,
+            3.0
+        ],
+        "w_syn": [
+            20.0,
+            -13.0
+        ],
+        "synapse_model": "stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse"
+    },
+    "BaggingClassifier": {
+        "n_estimators": 11,
+        "max_samples": 0.7,
+        "max_features": 1.0
+    }
+}

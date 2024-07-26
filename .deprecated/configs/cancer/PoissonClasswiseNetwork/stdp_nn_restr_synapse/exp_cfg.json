@@ -1,0 +1,22 @@
+{
+    "OwnRatePopulationDecoder":{},
+    "PoissonClasswiseNetwork": {
+        "n_estimators": 301,
+        "tau_m": 70.0,
+        "n_fields": 25,
+        "epochs": 1,
+        "bootstrap_features": false,
+        "early_stopping": true,
+        "quiet": true,
+        "max_features": 1.0,
+        "max_samples": 0.7,
+        "t_ref": 7.0,
+        "high_rate": 650,
+        "time": 600,
+        "synapse_model": "stdp_nn_restr_synapse"
+    },
+    "GRF": {
+        "n_fields": 25
+    },
+    "StandardScaler": {}
+}
