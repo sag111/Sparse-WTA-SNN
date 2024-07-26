@@ -43,7 +43,8 @@ def convert_neuron_ids_to_indices(
     connection_descriptors,
     pre_neuron_ids,
     post_neuron_ids,
-    delays=None
+    delays=None,
+    remove_zeros=False,
 ):
     """
     Convert neurons' IDs in NEST
@@ -81,6 +82,7 @@ def convert_neuron_ids_to_indices(
             connection_descriptors.get('source'),
             connection_descriptors.get('target')
         )
+        if (w > 0 and remove_zeros) or (not remove_zeros)
     ]
 
     weights_in_sparse_format = np.array(
