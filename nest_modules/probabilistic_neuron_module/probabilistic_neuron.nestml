@@ -1,0 +1,19 @@
+"""
+Name: probabilistic_neuron_model
+"""
+
+neuron probabilistic_neuron:
+    state:
+        I_syn pA = 0 pA
+    input:
+        exc_spikes <- excitatory spike
+        inh_spikes <- inhibitory spike
+    output:
+        spike   
+    update:
+        I_syn_orig pA = I_syn
+        I_syn += exc_spikes * pA * s
+        I_syn -= inh_spikes * pA * s
+        if random_uniform(0, 1) < I_syn:
+            emit_spike()
+        I_syn = I_syn_orig
