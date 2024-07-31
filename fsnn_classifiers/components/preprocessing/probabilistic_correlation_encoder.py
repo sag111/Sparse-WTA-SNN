@@ -118,7 +118,7 @@ class ProbabilisticCorrelationEncoder(BaseEstimator, TransformerMixin):
                     cur_feature = inp_vector[j]
 
                     cur_sum = np.sum(consume_S0)
-                    if cur_sum == 0:
+                    if cur_sum == 0 or cur_prob == 0:
                          break
                     
                     # we want to use at least one spike
