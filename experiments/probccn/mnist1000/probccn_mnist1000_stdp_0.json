@@ -1,0 +1,126 @@
+{
+    "module_names": [
+        "preprocessing.multi_norm",
+        "preprocessing.multi_transform",
+        "preprocessing.gaussian_receptive_fields",
+        "networks.probabilistic_correlation_classwise_network"
+    ],
+    "model_name": "ProbCCN",
+    "dataset": "mnist1000",
+    "plasticity": "stdp_nn_restr_synapse",
+    "space": {
+        "tau_plus": [
+            5.0,
+            10.0,
+            30.0,
+            50.0,
+            70.0,
+            90.0
+        ],
+        "tau_minus": [
+            5.0,
+            10.0,
+            30.0,
+            50.0,
+            70.0,
+            90.0
+        ],
+        "rate": [
+            100,
+            500,
+            1000,
+            2000,
+            3000,
+            4000,
+            5000,
+            6000
+        ],
+        "sigma_w": [
+            -0.5,
+            0.0,
+            0.5
+        ],
+        "n_fields": [
+            10,
+            15,
+            20,
+            25,
+            30
+        ],
+        "norm": [
+            "L2",
+            "SS",
+            "MMS",
+            "MAX"
+        ],
+        "mod": [
+            [
+                "PCA",
+                {
+                    "n_components": 16
+                }
+            ],
+            [
+                "PCA",
+                {
+                    "n_components": 32
+                }
+            ],
+            [
+                "PCA",
+                {
+                    "n_components": 64
+                }
+            ],
+            [
+                "PCA",
+                {
+                    "n_components": 128
+                }
+            ]
+        ]
+    },
+    "cv": true,
+    "MultiNorm": {
+        "type": "mms"
+    },
+    "MultiTransform": {
+        "mod": [
+            "PCA",
+            {
+                "n_components": 32
+            }
+        ]
+    },
+    "GaussianReceptiveFields": {
+        "n_fields": 15
+    },
+    "ProbabilisticCorrelationClasswiseNetwork": {
+        "n_estimators": 1,
+        "max_samples": 1.0,
+        "max_features": 1.0,
+        "time": 1000,
+        "t_ref": 0.0,
+        "w_init": 0.0,
+        "mu_plus": 0.0,
+        "mu_minus": 0.0,
+        "rate": 100,
+        "tau_minus": 70.0,
+        "tau_plus": 90.0,
+        "sigma_w": 0.5,
+        "n_fields": 15,
+        "synapse_model": "stdp_nn_restr_synapse",
+        "bootstrap_features": false,
+        "early_stopping": false,
+        "quiet": false
+    },
+    "results": [
+        0.695,
+        0.7675,
+        0.7725,
+        0.75,
+        0.72
+    ],
+    "mean": 0.741,
+    "std": 0.029436372059070057
+}

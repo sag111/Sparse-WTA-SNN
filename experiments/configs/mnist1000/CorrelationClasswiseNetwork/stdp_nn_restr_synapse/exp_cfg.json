@@ -19,18 +19,23 @@
                 ["PCA", {"n_components":128}]]
     },
     "cv":true,
-    "MultiNorm":{"type":"max"},
-    "MultiTransform":{"mod":["PCA", {"n_components":64}]},
-    "GaussianReceptiveFields":{"n_fields":30},
+    "MultiNorm":{"type":"mms"},
+    "MultiTransform":{"mod":["PCA", {"n_components":32}]},
+    "GaussianReceptiveFields":{"n_fields":15},
     "ProbabilisticCorrelationClasswiseNetwork":{"n_estimators":1,
             "max_samples":1.0,
             "max_features":1.0,
+            "t_ref":0.0,
             "w_init":0.0,
             "mu_plus":0.0,
             "mu_minus":0.0,
-            "n_fields":25,
+            "rate": 100,
+            "tau_minus": 70.0,
+            "tau_plus": 90.0,
+            "sigma_w": 0.5,
+            "n_fields":15,
             "synapse_model":"stdp_nn_restr_synapse", 
             "bootstrap_features":false,
             "early_stopping":false, 
-            "quiet":true}
+            "quiet":false}
 }
