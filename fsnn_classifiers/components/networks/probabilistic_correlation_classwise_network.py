@@ -30,24 +30,15 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         max_samples=1., # number of samples for each sub-network
         bootstrap_features=False,
         synapse_model="stdp_nn_restr_synapse",
-        V_th=-54.,
-        t_ref=4.,
-        tau_m=60.,
-        tau_minus=10.0,
         tau_plus=10.0,
-        I_exc=1e7,
+        min_spikes=1,
         epochs=1,
-        #time=1000,
-        #intervector_pause=50.0, # pause in-between vectors
         Wmax=1.0, # max synaptic weight
         mu_plus=0.0,
         mu_minus=0.0,
         learning_rate = 0.01,
-        tau_s=0.2,
-        ref_seq_interval=5,
         rate = 500,
         resolution=0.1,
-        sample_norm=1,
         w_init=1.0,
         sigma_w = 0.0,
         random_state=None,
@@ -61,9 +52,9 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         super(ProbabilisticCorrelationClasswiseNetwork, self).__init__(
             n_fields=n_fields,
             synapse_model=synapse_model,
-            V_th=V_th,
-            t_ref=t_ref, 
-            tau_m=tau_m,
+            V_th=0,
+            t_ref=0, 
+            tau_m=0,
             Wmax=Wmax,
             mu_plus=mu_plus,
             mu_minus=mu_minus,
@@ -75,65 +66,25 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             w_init=w_init,
         )
 
-        
-        
-        self._check_modules(quiet)
-        
-        #try:
-        #    nest.Install("probabilistic_neuron_module")
-        #except:
-        #    print("Probabilistic neuron loaded.")
-
         self.sigma_w = sigma_w
         self.learning_rate = learning_rate
+        self.min_spikes = min_spikes
 
         self.early_stopping = early_stopping
         self.n_jobs = n_jobs
         self.warm_start = warm_start
         self.quiet=quiet
-        self.sample_norm = sample_norm
         self.resolution = resolution
-        self.tau_minus = tau_minus
         self.tau_plus = tau_plus
 
         
         self.epochs = epochs
-        
-        #self.corr_time = corr_time
-        self.tau_s = 0 #tau_s # shift time between input and teacher sequence (in ms)
-        self.I_exc = I_exc
-        self.ref_seq_interval = ref_seq_interval
 
-        self.intervector_pause = 0#intervector_pause
-        self.rate = rate#int(time/self.resolution)
+        self.rate = rate
 
-        self.encoder = ProbabilisticCorrelationEncoder(rate=self.rate, resolution=self.resolution, min_spikes=1)
-
-        #self.init_encoder(time)
-        
-    #def init_encoder(self, time):
-
-        # some pre-computed values to reduce boilerplate code
-        #self.time = time
-        
-        #self.full_time = self.time + self.intervector_pause
-
-        #self.encoder = CorrelationEncoder(rate=self.rate, # does not change even if inference time is higher
-        #                                  tau_s=self.tau_s, 
-        #                                  time=self.time, 
-        #                                  resolution=self.resolution, 
-        #                                  interval=self.ref_seq_interval)
+        self.encoder = ProbabilisticCorrelationEncoder(rate=self.rate, resolution=self.resolution, min_spikes=self.min_spikes)
         
     def _get_parameters(self, number_of_inputs, number_of_classes, testing_mode):
-        
-        #neuron_parameters = {
-        #    'V_th': self.V_th, 
-        #    'E_L': -70.0, 
-        #    'V_reset': -70.0,
-        #    't_ref': 0.0, 
-        #    'tau_m': 1e20,
-        #    'tau_minus': self.tau_minus,
-        #}
 
         neuron_parameters = {"I_syn":0.0}
 
@@ -227,10 +178,7 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         })
         nest.rng_seed = random_state
 
-        try:
-            nest.Install("probabilistic_neuron_module")
-        except:
-            print("Probabilistic neuron loaded.")
+        self._check_modules(self.quiet)
 
 
         (neuron_parameters, 
@@ -241,10 +189,6 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
         if self.synapse_model in ["stdp_synapse", "stdp_nn_restr_synapse", "stdp_nn_symm_synapse"]:
             synapse_parameters["lambda"] = self.learning_rate
-
-        #synapse_parameters = flip_plasticity(synapse_parameters)
-
-        #self.E_L = neuron_parameters.get("E_L", -70.0) # just in case
 
         # create neuron populations
         (inputs_ids, 
@@ -373,51 +317,6 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             return int(most_common[0][0])
         else:
             return int(np.round(np.median(votes), 0))
-        
-    def _generate_inhibition_dict(self, X, active_neurons):
-
-        inhibition_dict = dict()
-        for vector_number in range(len(X)):
-            inhibition_dict[vector_number] = [
-                                                {
-                                                    # Inject negative stimulation current
-                                                    # into all neurons that do not belong
-                                                    # to the current class, so that to
-                                                    # prevent them from spiking
-                                                    # (and thus from learning
-                                                    # the current class).
-                                                    'I_e': 0. if current_neuron in active_neurons[vector_number] else -1e+3,
-                                                    # That current may have made the neuron's
-                                                    # potential too negative.
-                                                    # We reset the potential, so that previous
-                                                    # stimulation not inhibit spiking
-                                                    # in response to the current input.
-                                                    'V_m': self.E_L,
-                                                }
-                                                for current_neuron in range(self.n_estimators*len(self.classes_))
-                                            ]
-            
-        return inhibition_dict
-    
-    def _get_teacher_dict(self, active_neurons, sample_time, I):
-        start_times = self.encoder.ref_times + sample_time + self.tau_s
-        end_times = start_times + self.resolution
-        amplitude_times = sorted(list(start_times) + list(end_times))
-        #assert len(set(amplitude_times)) == len(amplitude_times), "Teacher spikes are too close, increase <spike_ref_interval>."
-        assert all(t > 0 for t in amplitude_times), "Amplitude times must be positive."
-        amplitude_values = [I if i % 2 == 0 else 0 for i in range(len(amplitude_times))]
-
-        return [{"amplitude_times":amplitude_times if current_neuron in active_neurons else [],
-                 "amplitude_values":amplitude_values if current_neuron in active_neurons else [],
-                 "allow_offgrid_times":True} 
-                 for current_neuron in range(self.n_estimators*len(self.classes_))]
-
-    def norm_samples(self, X, testing_mode=False):
-        assert len(X[X < 0]) == 0, "Input features cannot be negative."
-        result = X / X.sum(axis=-1, keepdims=True) # L1-normalization
-        result /= self.sample_norm
-        
-        return result
 
 
     def run_the_simulation(self, X, y_train=None):
@@ -427,13 +326,7 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         if not testing_mode:
             self.encoder.fit(X)
             self.time = self.encoder.time
-            self.intervector_pause = 0 # later
-            self.full_time = self.time + self.intervector_pause
-
-        #if testing_mode:
-        #    nest.SetStatus(self.network_objects.neuron_ids, {"V_th": 1000.0})
-        #else:
-            #nest.SetStatus(self.network_objects.neuron_ids, {"V_th": self.V_th})
+            self.full_time = self.time
         
         n_epochs = self.epochs if not testing_mode else 1
 
@@ -442,11 +335,7 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
         early_stopping = self.early_stopping and not testing_mode
 
         if not testing_mode:
-            # minmax scaling is necessary for this network
             active_neurons = self._bootstrap_samples(X, y_train)
-            #inhibition_dict = self._generate_inhibition_dict(X, active_neurons)
-        
-        #X_s = self.norm_samples(X, testing_mode)
             
         
         progress_bar = tqdm(
@@ -470,9 +359,6 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
                 x = self.encoder.transform(x.reshape((1, -1))).reshape((X.shape[-1], -1)) # convert into spike sequences
                 assert (np.count_nonzero(x) > 0), "Feature magnitude is too low. Increase time or decrease resolution."
-                
-                                
-                #self.norm_weights()
 
                 sample_time = epoch_time + vector_number * self.full_time
 
@@ -488,8 +374,7 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
                 if not testing_mode:
 
-                    #teacher_list = self._get_teacher_dict(active_neurons[vector_number], sample_time, self.I_exc)
-                    teacher_list = [{"spike_times":list(self.encoder.ref_times + sample_time + self.tau_s) 
+                    teacher_list = [{"spike_times":list(self.encoder.ref_times + sample_time) 
                                      if current_neuron in active_neurons[vector_number] else []} 
                                     for current_neuron in range(self.n_estimators*len(self.classes_))]
 
@@ -499,50 +384,8 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                                    for current_neuron in range(self.n_estimators*len(self.classes_))]
                     
                     nest.SetStatus(self.network_objects.neuron_ids, neuron_list)
-
-                    #if vector_number == 10:
-                    #    import pickle
-                    #    import sys
-                    #    with open("check_times.pkl", 'wb') as fp:
-                    #        pickle.dump((inp_time_list, teacher_list, sample_time), fp)
-
-                    #    sys.exit(1)
-
-                    #if self.w_inh is None:
-                    #nest.SetStatus(
-                    #    self.network_objects.neuron_ids,
-                    #    inhibition_dict[vector_number]
-                    #)
                 
                 nest.Simulate(self.time)
-
-                #if vector_number <= 10 and testing_mode:
-                #    import pickle
-                #    import sys
-
-                #    all_spikes = nest.GetStatus(self.network_objects.spike_recorder_id, keys='events')[0]
-                #    teacher_list = [{"spike_times":np.array(all_spikes["times"])[all_spikes['senders'] == current_neuron]} for current_neuron in range(self.n_estimators*len(self.classes_))]
-                #    with open(f"check_times_test_{vector_number}.pkl", 'wb') as fp:
-                #        pickle.dump((inp_time_list, teacher_list, sample_time), fp)
-
-                #    weights = np.asarray(
-                #    nest.GetStatus(self.network_objects.all_connection_descriptors, 'weight')
-                #    )
-
-                #    weights = convert_neuron_ids_to_indices(
-                #        weights,
-                #        self.network_objects.all_connection_descriptors,
-                #        self.network_objects.inputs_ids,
-                #        self.network_objects.neuron_ids,
-                #        remove_zeros=True
-                #    )
-                    
-                #    with open("weights.pkl", 'wb') as fp:
-                #       pickle.dump(weights, fp)
-
-                #if vector_number == 10 and testing_mode:
-
-                #    sys.exit(1)
 
                 if record_spikes:
                     
@@ -553,10 +396,6 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
 
                     all_spikes = nest.GetStatus(self.network_objects.spike_recorder_id, keys='events')[0]
                     N = int(self.time/self.resolution)
-
-                    #teacher_idxs = ((self.encoder.ref_times + sample_time + self.resolution)/self.resolution).astype(np.int32)
-                    #teacher_spikes = np.zeros(N)
-                    #teacher_spikes[teacher_idxs[teacher_idxs < N]] = 1
 
                     input_spikes = np.zeros(N)
                     inp_spike_times = [np.array(time_dict["spike_times"]) - sample_time for time_dict in inp_time_list if len(time_dict["spike_times"]) > 0]
@@ -578,7 +417,8 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
                     # Empty the detector.
                     nest.SetStatus(self.network_objects.spike_recorder_id, {'n_events': 0})
 
-                #nest.Simulate(self.intervector_pause)
+                    # reset neurons
+                    neuron_list = [{"I_syn": 0.0} for current_neuron in range(self.n_estimators*len(self.classes_))]
 
                 progress_bar.update()
 
@@ -608,8 +448,6 @@ class ProbabilisticCorrelationClasswiseNetwork(BaseClasswiseBaggingNetwork):
             w_min = weights.min()
 
             weights = (weights - w_min)/(w_max - w_min)
-
-            #weights = np.ones_like(weights) # make all weights 1
 
             weights = convert_neuron_ids_to_indices(
                 weights,

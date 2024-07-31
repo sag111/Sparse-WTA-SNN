@@ -123,20 +123,32 @@ def experiment_run(params: dict, cfg: dict) -> float:
         X = np.concatenate((X_train, X_test), axis=0)
         y = np.concatenate((y_train, y_test), axis=0)
 
-        results = cross_validate(pipe, 
-                                 X, 
-                                 y, 
-                                 cv=StratifiedKFold(n_splits=5),
-                                 scoring='f1_micro'
-                                 )['test_score']
-        print(np.mean(results))
-        return -1 * (np.min(results) - np.std(results)) # pessimistic approach
+        try:
+            results = cross_validate(pipe, 
+                                    X, 
+                                    y, 
+                                    cv=StratifiedKFold(n_splits=5),
+                                    scoring='f1_micro'
+                                    )['test_score']
+            
+            if not any(np.isnan(results)):
+                print(np.mean(results))
+                return -1 * (np.min(results) - np.std(results)) # pessimistic approach
+            else:
+                return 0.0
+        except Exception as e:
+            print(e)
+            return 0.0
     else:
-        pipe.fit(X_train, y_train)
+        try:
+            pipe.fit(X_train, y_train)
 
-        train_score = f1_score(y_train, pipe.predict(X_train), average='micro')
-        test_score = f1_score(y_test, pipe.predict(X_test), average='micro')
+            train_score = f1_score(y_train, pipe.predict(X_train), average='micro')
+            test_score = f1_score(y_test, pipe.predict(X_test), average='micro')
 
-        print(test_score)
-        return -1 * train_score * test_score
+            print(test_score)
+            return -1 * train_score * test_score
+        except Exception as e:
+            print(e)
+            return 0.0
 

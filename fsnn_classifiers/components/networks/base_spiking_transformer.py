@@ -62,15 +62,20 @@ class BaseSpikingTransformer(BaseEstimator, TransformerMixin):
         nest.set_verbosity('M_QUIET')
         try:
             nest.Install("diehl_neuron_module")
-        except:
+        except Exception as e:
             if not quiet:
-                print("diehl_neuron_module is installed.")
+                print(e)
 
         try:
             nest.Install("stdptanhmodule")
-        except:
+        except Exception as e:
             if not quiet:
-                print("stdptanhmodule is installed.")
+                print(e)
+
+        try:
+            nest.Install("probabilistic_neuron_module")
+        except Exception as e:
+            print(e)
 
     def fit(self, X, y):
         if hasattr(self, '_validate_data'):
