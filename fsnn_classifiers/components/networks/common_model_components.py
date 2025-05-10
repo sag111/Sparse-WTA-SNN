@@ -5,6 +5,12 @@ def disable_plasticity(synapse_parameters):
         'stdp_nn_symm_synapse': ['lambda'],
         'stdp_nn_pre_centered_synapse': ['lambda'],
         'stdp_nn_restr_synapse': ['lambda'],
+
+        'shifted_stdp_synapse': ['lambda'],
+        'shifted_nn_symm_stdp_synapse': ['lambda'],
+        'shifted_nn_pre_centered_stdp_synapse': ['lambda'],
+        'shifted_nn_restr_stdp_synapse': ['lambda'],
+
         'stdp_tanh_synapse': ['a_plus', 'a_minus'],
         'stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse': ['alpha_plus', 'alpha_minus'],
     }[
@@ -23,6 +29,12 @@ def flip_plasticity(synapse_parameters):
         'stdp_nn_symm_synapse': ['lambda'],
         'stdp_nn_pre_centered_synapse': ['lambda'],
         'stdp_nn_restr_synapse': ['lambda'],
+
+        'shifted_stdp_synapse': ['lambda'],
+        'shifted_nn_symm_stdp_synapse': ['lambda'],
+        'shifted_nn_pre_centered_stdp_synapse': ['lambda'],
+        'shifted_nn_restr_stdp_synapse': ['lambda'],
+
         'stdp_tanh_synapse': ['a_plus', 'a_minus'],
         'stdp_gaussian_times_linear_with_separate_exp_r_dependence_synapse': ['alpha_plus', 'alpha_minus'],
     }[

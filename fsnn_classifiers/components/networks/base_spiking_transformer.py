@@ -79,7 +79,8 @@ class BaseSpikingTransformer(BaseEstimator, TransformerMixin):
         else:
             X, y = check_X_y(X, y)
             self.n_features_in_ = X.shape[1]
-        self.classes_ = unique_labels(y)
+
+        self.classes_ = unique_labels(y) if self.class_name is None else [0] # when using a single neuron in the network, the only class label is "0" because neuron_id is 0
         
         self._create_network_if_necessary(testing_mode=False)
         self.run_the_simulation(

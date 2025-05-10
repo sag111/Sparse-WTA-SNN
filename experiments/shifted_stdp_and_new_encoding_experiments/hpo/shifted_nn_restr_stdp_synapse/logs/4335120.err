@@ -1,0 +1,11 @@
+
+EnvironmentNameNotFound: Could not find conda environment: 4332078
+You can list all discoverable environments with `conda info --envs`.
+
+
+
+                Search space does not exist in: /s/ls4/users/selibrin/spiking_researches/correlation_encoding_and_training/mnist/hpo/shifted_nn_restr_stdp_synapse/hpo_data/trials/4332078/search_space.pkl!
+
+                Using search space from the executed script.
+            
+slurmstepd: error: *** JOB 4335120 ON n400 CANCELLED AT 2025-05-06T20:13:31 ***

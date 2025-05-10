@@ -1,0 +1,20 @@
+stages:
+  get_delta_w_from_nest:
+    desc: Reproduce the conductance change delta_w in dependence on delta_t and w_initial, so that to compare it to the experimental graph
+    cmd: python ../get_delta_w_from_nest.py
+    deps:
+    - ../get_delta_w_from_nest.py
+    - parameters.py
+    - fitted_formulae.py
+    - ../../stdp_tanh_module/CMakeLists.txt
+    - ../../stdp_tanh_module/stdptanhmodule.h
+    - ../../stdp_tanh_module/stdptanhmodule.cpp
+    - ../../stdp_tanh_module/stdp_gaussian_with_square_r_dependence_connection.h
+    - ../../stdp_tanh_module/stdp_exp_with_separate_exp_r_dependence_connection.h
+    - ../../stdp_tanh_module/stdp_tanh_connection.h
+    - ../../stdp_tanh_module/stdp_gaussian_with_cubic_r_dependence_connection.h
+    - ../../stdp_tanh_module/stdp_gaussian_with_separate_exp_r_dependence_connection.h
+    - ../../stdp_tanh_module/stdp_gaussian_with_sin_r_dependence_connection.h
+    outs:
+    - delta_G_vs_delta_t_and_G_initial.csv:
+        cache: false

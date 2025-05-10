@@ -110,7 +110,8 @@ def load_data(dataset: str,
               n_mfcc: int = 30, 
               drop_extra: bool = True,
               max_train: int = 60000,
-              seed: int = 42) -> tuple:
+              seed: int = 42,
+              shuffle: bool = True) -> tuple:
     if dataset == "iris":
         X, y = load_iris(return_X_y=True)
         X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=seed, test_size=test_size)
@@ -183,12 +184,45 @@ def load_data(dataset: str,
 
         X_train, y_train = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
         X_test, y_test = np.array(data['images']).reshape(-1, 28*28), np.array(data['labels'])
+    elif dataset == "emnist-letters":
+        loader = MnistDataloader(
+            training_images_filepath = f"{os.path.dirname(__file__)}/_emnist_data/letters/emnist-letters-train-images-idx3-ubyte", 
+            training_labels_filepath = f"{os.path.dirname(__file__)}/_emnist_data/letters/emnist-letters-train-labels-idx1-ubyte",
+            test_images_filepath = f"{os.path.dirname(__file__)}/_emnist_data/letters/emnist-letters-test-images-idx3-ubyte",
+            test_labels_filepath = f"{os.path.dirname(__file__)}/_emnist_data/letters/emnist-letters-test-labels-idx1-ubyte",
+        )
+
+        (X_train, y_train), (X_test, y_test) = loader.load_data()
+        X_train = np.array(X_train).reshape((-1, 784))
+        X_test = np.array(X_test).reshape((-1, 784))
+        y_train = np.array(y_train)
+        y_test = np.array(y_test)
+
+        samples = defaultdict(list)
+        labels = defaultdict(list)
+
+        for x, y in zip(X_train, y_train):
+            if len(samples[y]) < int(max_train/10):
+                samples[y].append(x)
+                labels[y].append(y)
+            
+        X_train = []
+        y_train = []
+        for sample, label in zip(samples.values(), labels.values()):
+            X_train.extend(sample)
+            y_train.extend(label)
+        X_train = np.array(X_train)
+        y_train = np.array(y_train)
 
     else:
         raise NotImplementedError("Wrong dataset name.")
     
     train_idxs = np.arange(0, len(X_train), 1).astype(np.int32)
-    np.random.shuffle(train_idxs)
+
+    if shuffle:
+        np.random.seed(seed)
+        np.random.shuffle(train_idxs)
+        
     X_train = X_train[train_idxs]
     y_train = y_train[train_idxs]
     return X_train, X_test, y_train, y_test

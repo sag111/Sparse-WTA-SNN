@@ -1,31 +1,0 @@
-
-Apr 20 23:42:09 Install [Info]: 
-    loaded module diehl_neuron_module
-
-Apr 20 23:42:09 Install [Info]: 
-    loaded module The module with memristor-fitting synapse models
-2trial [00:00, ?trial/s, best loss=?]2trial [00:00, ?trial/s, best loss=?]
-100%|██████████| 2/2 [00:00<?, ?trial/s, best loss=?]100%|██████████| 2/2 [00:00<?, ?trial/s, best loss=?]
- 67%|██████▋   | 2/3 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -53.30324935804957, 'Wmax_start': 0.015391915843813208, 'corr_time': 30.0, 'max_features': 0.3, 'max_samples': 0.3, 'min_weight': 0.1784194528078979, 'mu_minus': 0.9808468420872255, 'mu_plus': 0.5378724665677972, 'n_estimators': 11, 'norm': 'std', 'ref_seq_interval': 14, 'synapse_model': 'stdp_nn_restr_synapse', 'tau_m': 60, 'tau_s': 0.9, 'time': 700}
- 67%|██████▋   | 2/3 [56:10<?, ?trial/s, best loss=?]                                                     0.086
- 67%|██████▋   | 2/3 [56:10<?, ?trial/s, best loss=?]100%|██████████| 3/3 [56:10<00:00, 3370.30s/trial, best loss: -0.404]100%|██████████| 3/3 [56:10<00:00, 3370.30s/trial, best loss: -0.404]
- 75%|███████▌  | 3/4 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -46.35482031973184, 'Wmax_start': 0.07851985398145885, 'corr_time': 30.0, 'max_features': 0.4, 'max_samples': 0.8, 'min_weight': 0.16822239552152918, 'mu_minus': 0.36034913982916783, 'mu_plus': 0.30529987597710007, 'n_estimators': 58, 'norm': 'std', 'ref_seq_interval': 12, 'synapse_model': 'stdp_nn_symm_synapse', 'tau_m': 20, 'tau_s': 0.7, 'time': 1000}
- 75%|███████▌  | 3/4 [2:35:31<?, ?trial/s, best loss=?]                                                       0.546
- 75%|███████▌  | 3/4 [2:35:31<?, ?trial/s, best loss=?]100%|██████████| 4/4 [2:35:31<00:00, 9331.93s/trial, best loss: -0.546]100%|██████████| 4/4 [2:35:31<00:00, 9331.93s/trial, best loss: -0.546]
- 80%|████████  | 4/5 [00:00<?, ?trial/s, best loss=?]                                                     Early stopping on weights convergence to 0 or 1.
- 80%|████████  | 4/5 [27:59<?, ?trial/s, best loss=?]                                                     {'V_th': -40.06283232190413, 'Wmax_start': 0.016273131326137558, 'corr_time': 15.0, 'max_features': 0.4, 'max_samples': 0.3, 'min_weight': 0.19209406490792907, 'mu_minus': 0.03239033655646706, 'mu_plus': 0.22203151395435028, 'n_estimators': 44, 'norm': 'std', 'ref_seq_interval': 23, 'synapse_model': 'stdp_nn_restr_synapse', 'tau_m': 50, 'tau_s': 0.9, 'time': 500}
- 80%|████████  | 4/5 [1:14:01<?, ?trial/s, best loss=?]                                                       0.084
- 80%|████████  | 4/5 [1:14:01<?, ?trial/s, best loss=?]100%|██████████| 5/5 [1:14:01<00:00, 4441.91s/trial, best loss: -0.546]100%|██████████| 5/5 [1:14:01<00:00, 4441.91s/trial, best loss: -0.546]
- 83%|████████▎ | 5/6 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -50.41571356545589, 'Wmax_start': 0.05777882019522289, 'corr_time': 15.0, 'max_features': 1.0, 'max_samples': 0.1, 'min_weight': 0.12958939081131016, 'mu_minus': 0.9908774700897676, 'mu_plus': 0.286757293264455, 'n_estimators': 46, 'norm': 'std', 'ref_seq_interval': 4, 'synapse_model': 'stdp_nn_restr_synapse', 'tau_m': 70, 'tau_s': 0.3, 'time': 1200}
- 83%|████████▎ | 5/6 [2:43:12<?, ?trial/s, best loss=?]                                                       0.22
- 83%|████████▎ | 5/6 [2:43:12<?, ?trial/s, best loss=?]100%|██████████| 6/6 [2:43:12<00:00, 9792.35s/trial, best loss: -0.546]100%|██████████| 6/6 [2:43:12<00:00, 9792.35s/trial, best loss: -0.546]
- 86%|████████▌ | 6/7 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -43.95891774705963, 'Wmax_start': 0.07405363468273621, 'corr_time': 20.0, 'max_features': 0.9, 'max_samples': 0.7, 'min_weight': 0.08703651604078005, 'mu_minus': 0.2409154840108566, 'mu_plus': 0.6004112264012276, 'n_estimators': 55, 'norm': 'std', 'ref_seq_interval': 12, 'synapse_model': 'stdp_nn_symm_synapse', 'tau_m': 60, 'tau_s': 0.9, 'time': 700}
- 86%|████████▌ | 6/7 [2:06:21<?, ?trial/s, best loss=?]                                                       0.476
- 86%|████████▌ | 6/7 [2:06:21<?, ?trial/s, best loss=?]100%|██████████| 7/7 [2:06:22<00:00, 7582.21s/trial, best loss: -0.546]100%|██████████| 7/7 [2:06:22<00:00, 7582.21s/trial, best loss: -0.546]
- 88%|████████▊ | 7/8 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -50.63433894582451, 'Wmax_start': 0.0360143724559904, 'corr_time': 10.0, 'max_features': 1.0, 'max_samples': 0.8, 'min_weight': 0.1338615040343874, 'mu_minus': 0.9680237639487478, 'mu_plus': 0.13775104270632443, 'n_estimators': 15, 'norm': 'std', 'ref_seq_interval': 22, 'synapse_model': 'stdp_nn_symm_synapse', 'tau_m': 100, 'tau_s': 0.1, 'time': 1000}
- 88%|████████▊ | 7/8 [1:22:35<?, ?trial/s, best loss=?]                                                       0.204
- 88%|████████▊ | 7/8 [1:22:35<?, ?trial/s, best loss=?]100%|██████████| 8/8 [1:22:35<00:00, 4955.64s/trial, best loss: -0.546]100%|██████████| 8/8 [1:22:35<00:00, 4955.64s/trial, best loss: -0.546]
- 89%|████████▉ | 8/9 [00:00<?, ?trial/s, best loss=?]                                                     {'V_th': -64.7690010567405, 'Wmax_start': 0.0020736510863841383, 'corr_time': 40.0, 'max_features': 0.4, 'max_samples': 0.5, 'min_weight': 0.12228640173077521, 'mu_minus': 0.015368878834891575, 'mu_plus': 0.0961011072976784, 'n_estimators': 39, 'norm': 'std', 'ref_seq_interval': 6, 'synapse_model': 'stdp_nn_restr_synapse', 'tau_m': 30, 'tau_s': 0.1, 'time': 500}
- 89%|████████▉ | 8/9 [1:23:05<?, ?trial/s, best loss=?]                                                       0.134
- 89%|████████▉ | 8/9 [1:23:05<?, ?trial/s, best loss=?]100%|██████████| 9/9 [1:23:06<00:00, 4986.03s/trial, best loss: -0.546]100%|██████████| 9/9 [1:23:06<00:00, 4986.03s/trial, best loss: -0.546]
- 90%|█████████ | 9/10 [00:00<?, ?trial/s, best loss=?]
